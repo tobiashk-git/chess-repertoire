@@ -163,3 +163,7 @@ textarea { width: 100%; font: inherit; font-size: 16px; border: 1px solid var(--
 .mini[hidden] { display: none; }
 .mini .board { box-shadow: none; border-radius: 3px; }
 .mini .sq .rank, .mini .sq .file { display: none; }
+
+.tip { margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--line); color: var(--muted); font-size: 13px; }
+.tip:empty { display: none; }
+.tip b { color: var(--ink); }

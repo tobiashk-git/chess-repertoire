@@ -43,9 +43,11 @@ function playMove(mv) {
 }
 
 function saveLine() {
+  const n = line.filter((_, i) => !isSaved(i)).length;
   line.forEach((m, i) => R.addMove(rep, R.keyOf(fenAt(i)), m.san, m.uci));
   persist();
   render();
+  toast(`Line saved — ${n} new move${n === 1 ? '' : 's'}.`);
 }
 
 function deleteMove(san) {
@@ -127,6 +129,14 @@ function render() {
   $('moves-title').textContent = myTurn ? 'Your move' : 'Their replies';
   $('moves-hint').textContent = chess.isGameOver() ? '' :
     myTurn ? (stored.length ? '' : 'None yet — play your move') : (stored.length ? '' : 'None yet — add replies to prepare for');
+  // how to branch: the answer to "how do I add another line?"
+  const unsavedHere = line.some((_, i) => !isSaved(i));
+  $('moves-tip').innerHTML = chess.isGameOver() ? '' :
+    unsavedHere ? 'Dashed moves are not saved yet — carry on with the line, then press <b>Save line</b>.' :
+    !stored.length ? '' :
+    myTurn ? 'To add an alternative for you, play a different move on the board.'
+           : 'To prepare for another reply, play it on the board — then continue the line and <b>Save line</b>.';
+
   const list = $('moves');
   list.innerHTML = '';
   const counter = R.lineCounter(rep);
