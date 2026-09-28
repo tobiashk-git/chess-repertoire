@@ -8,6 +8,7 @@
 import { Chess, DEFAULT_POSITION } from './vendor/chess.js';
 import { Board } from './board.js';
 import * as R from './repertoire.js';
+import * as PGN from './pgn.js';
 
 const $ = id => document.getElementById(id);
 const MINE = '#15803d', THEIRS = '#2563eb';
@@ -98,6 +99,7 @@ function render() {
   board.set(chess, { lastMove: last && { from: last.from, to: last.to }, arrows });
 
   // side toggle
+  $('exp-side-name').textContent = rep.side === 'w' ? 'White' : 'Black';
   for (const b of document.querySelectorAll('.seg button')) b.classList.toggle('on', b.dataset.side === rep.side);
 
   // path
@@ -172,7 +174,7 @@ $('note').addEventListener('input', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'TEXTAREA') return;
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || !$('sheet').hidden) return;
   if (e.key === 'ArrowLeft') go(cur - 1);
   else if (e.key === 'ArrowRight') next();
   else if (e.key === 'ArrowUp' || e.key === 'Home') go(0);
@@ -180,6 +182,142 @@ document.addEventListener('keydown', e => {
   else return;
   e.preventDefault();
 });
+
+/* ---------- PGN sheet: import / export ---------- */
+
+let pending = null;        // parsed games awaiting the Import button
+let undoSnapshot = null;   // reps as they were before the last import
+
+const clone = x => JSON.parse(JSON.stringify(x));
+const sideName = s => (s === 'w' ? 'White' : 'Black');
+
+function openSheet() { resetImport(); $('toast').hidden = true; $('sheet').hidden = false; }
+function closeSheet() { $('sheet').hidden = true; resetImport(); }
+
+function resetImport() {
+  pending = null;
+  $('import-start').hidden = false;
+  $('import-review').hidden = true;
+  $('paste-box').hidden = true;
+  $('pgn-text').value = '';
+  $('pgn-file').value = '';
+}
+
+// A backup file tags every game with [Repertoire "w"|"b"]; those go back to their own side.
+const isBackup = games => games.every(g => g.headers.Repertoire === 'w' || g.headers.Repertoire === 'b');
+
+function readPgn(text) {
+  const games = PGN.parse(text).filter(g => g.root.children.length);
+  if (!games.length) { toast('No moves found in that PGN.'); return; }
+  pending = games;
+  const backup = isBackup(games);
+  const names = [...new Set(games.map(g => g.headers.Event).filter(e => e && e !== '?'))].slice(0, 3);
+  $('imp-summary').textContent = backup
+    ? `Repertoire backup: ${[...new Set(games.map(g => sideName(g.headers.Repertoire)))].join(' + ')}.`
+    : `${games.length} game${games.length === 1 ? '' : 's'}${names.length ? ' — ' + names.join(', ') : ''}.`;
+  $('imp-options').hidden = backup;
+  $('imp-side').value = data.active;
+  $('imp-depth').value = games.length > 1 && !games.some(g => hasVariations(g.root)) ? '24' : '0';
+  $('import-start').hidden = true;
+  $('import-review').hidden = false;
+  updatePreview();
+}
+
+function hasVariations(node) {
+  return node.children.length > 1 || node.children.some(hasVariations);
+}
+
+// Runs the import against copies of the repertoires; returns the copies and the counts.
+function simulate() {
+  const reps = clone(data.reps);
+  const total = { games: 0, moves: 0, added: 0, skipped: 0, bad: 0 };
+  const add = r => { for (const k in total) total[k] += r[k]; };
+  if (isBackup(pending)) {
+    for (const side of ['w', 'b']) add(PGN.importGames(reps[side], pending.filter(g => g.headers.Repertoire === side)));
+  } else {
+    add(PGN.importGames(reps[$('imp-side').value], pending, { maxPly: +$('imp-depth').value }));
+  }
+  return { reps, total };
+}
+
+function updatePreview() {
+  const { total: t } = simulate();
+  let msg = t.added
+    ? `${t.added} new move${t.added === 1 ? '' : 's'} will be added (${t.moves} read).`
+    : `Nothing new — all ${t.moves} moves are already in the repertoire.`;
+  if (t.skipped) msg += ` ${t.skipped} game${t.skipped === 1 ? '' : 's'} skipped (start from a custom position).`;
+  if (t.bad) msg += ` ${t.bad} move${t.bad === 1 ? '' : 's'} could not be read and were left out.`;
+  $('imp-preview').textContent = msg;
+  $('imp-go').disabled = !t.added;
+}
+
+function doImport() {
+  const { reps, total } = simulate();
+  undoSnapshot = clone(data.reps);
+  data.reps = reps;
+  rep = data.reps[data.active];
+  line = []; cur = 0;
+  persist();
+  closeSheet();
+  render();
+  toast(`Imported ${total.added} new move${total.added === 1 ? '' : 's'}.`, true);
+}
+
+function undoImport() {
+  if (!undoSnapshot) return;
+  data.reps = undoSnapshot;
+  undoSnapshot = null;
+  rep = data.reps[data.active];
+  line = []; cur = 0;
+  persist();
+  render();
+  toast('Import undone.');
+}
+
+let toastTimer;
+function toast(text, withUndo = false) {
+  $('toast-text').textContent = text;
+  $('toast-undo').hidden = !withUndo;
+  $('toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('toast').hidden = true; }, withUndo ? 8000 : 3000);
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+async function deliver(text, filename) {
+  const file = new File([text], filename, { type: 'text/plain' });
+  // On iPhone the share sheet is the way to save a file (Save to Files, AirDrop, Mail…)
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: filename }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+const backupText = () => ['w', 'b'].map(s => PGN.exportRep(data.reps[s])).join('\n');
+
+$('menu-btn').onclick = openSheet;
+$('sheet-close').onclick = closeSheet;
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) closeSheet(); });
+$('pgn-file').onchange = async e => { const f = e.target.files[0]; if (f) readPgn(await f.text()); };
+$('paste-toggle').onclick = () => { $('paste-box').hidden = false; $('pgn-text').focus(); };
+$('paste-go').onclick = () => readPgn($('pgn-text').value);
+$('imp-side').onchange = updatePreview;
+$('imp-depth').onchange = updatePreview;
+$('imp-go').onclick = doImport;
+$('imp-cancel').onclick = resetImport;
+$('toast-undo').onclick = undoImport;
+$('exp-side').onclick = () => deliver(PGN.exportRep(rep), `repertoire-${sideName(rep.side).toLowerCase()}-${today()}.pgn`);
+$('exp-all').onclick = () => deliver(backupText(), `chess-repertoire-backup-${today()}.pgn`);
+$('exp-copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(PGN.exportRep(rep)); toast(`${sideName(rep.side)} repertoire copied as PGN.`); }
+  catch { toast('Copy failed — use Export instead.'); }
+};
 
 render();
 

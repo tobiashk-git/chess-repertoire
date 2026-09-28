@@ -19,7 +19,66 @@
       <button id="side-w" data-side="w">White</button>
       <button id="side-b" data-side="b">Black</button>
     </div>
+    <button id="menu-btn" class="icon-btn" title="Import / export" aria-label="Import and export">⋯</button>
   </header>
+
+  <div id="sheet" class="sheet-wrap" hidden>
+    <div class="sheet" role="dialog" aria-label="Import and export">
+      <div class="sheet-head">
+        <h2>PGN</h2>
+        <button id="sheet-close" class="icon-btn dark" aria-label="Close">✕</button>
+      </div>
+
+      <section id="import-start">
+        <h3>Import</h3>
+        <p class="hint">Merge a PGN file into a repertoire: variations, comments (as notes) and every game in the file. Nothing already there is removed.</p>
+        <div class="row">
+          <label class="btn">Choose file…<input id="pgn-file" type="file" hidden></label>
+          <button id="paste-toggle" class="btn">Paste PGN</button>
+        </div>
+        <div id="paste-box" hidden>
+          <textarea id="pgn-text" rows="6" placeholder="1. e4 e5 2. Nf3 (2. Bc4) Nc6 …"></textarea>
+          <button id="paste-go" class="btn">Read PGN</button>
+        </div>
+      </section>
+
+      <section id="import-review" hidden>
+        <h3>Import</h3>
+        <p id="imp-summary"></p>
+        <div id="imp-options">
+          <label class="field">Into
+            <select id="imp-side"><option value="w">White repertoire</option><option value="b">Black repertoire</option></select>
+          </label>
+          <label class="field">Depth
+            <select id="imp-depth">
+              <option value="0">Whole game</option>
+              <option value="16">First 8 moves</option>
+              <option value="24">First 12 moves</option>
+              <option value="30">First 15 moves</option>
+              <option value="40">First 20 moves</option>
+            </select>
+          </label>
+        </div>
+        <p id="imp-preview" class="preview"></p>
+        <div class="row">
+          <button id="imp-go" class="primary">Import</button>
+          <button id="imp-cancel" class="btn">Cancel</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Export</h3>
+        <p class="hint">A PGN of one repertoire, openable in Lichess, ChessBase and friends. The backup holds both and restores straight back into the right sides.</p>
+        <div class="row">
+          <button id="exp-side" class="btn">Export <span id="exp-side-name">White</span></button>
+          <button id="exp-all" class="btn">Back up everything</button>
+          <button id="exp-copy" class="btn">Copy PGN</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden><span id="toast-text"></span><button id="toast-undo" hidden>Undo</button></div>
 
   <main class="layout">
     <section class="board-col">

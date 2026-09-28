@@ -13,7 +13,7 @@ Each position stores the moves leaving it (the first of *your* moves is the main
 
 ## Phases
 1. Board + repertoire builder ✅
-2. PGN import / export
+2. PGN import / export ✅ (menu ⋯: file or paste, depth cap, undo; export, backup, copy)
 3. Spaced-repetition training
 4. Model games (lichess masters explorer)
 5. Offline polish + HTTPS deploy (GitHub Pages)
