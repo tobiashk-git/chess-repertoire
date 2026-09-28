@@ -15,11 +15,11 @@
 <body>
   <header class="top">
     <div class="brand">Repertoire</div>
-    <div class="seg" role="tablist" aria-label="Repertoire side">
+    <div class="seg build-only" role="tablist" aria-label="Repertoire side">
       <button id="side-w" data-side="w">White</button>
       <button id="side-b" data-side="b">Black</button>
     </div>
-    <button id="menu-btn" class="icon-btn" title="Import / export" aria-label="Import and export">⋯</button>
+    <button id="menu-btn" class="icon-btn build-only" title="Import / export" aria-label="Import and export">⋯</button>
   </header>
 
   <div id="sheet" class="sheet-wrap" hidden>
@@ -83,7 +83,7 @@
   <main class="layout">
     <section class="board-col">
       <div id="board"></div>
-      <nav class="nav">
+      <nav class="nav build-only">
         <button id="nav-first" title="Start">⏮</button>
         <button id="nav-prev" title="Back">◀</button>
         <button id="nav-next" title="Forward">▶</button>
@@ -93,12 +93,32 @@
     </section>
 
     <section class="side-col">
-      <div class="path-row">
+      <div class="panel train-bar build-only">
+        <div class="due">
+          <b id="due-count"></b>
+          <span id="due-sub" class="hint"></span>
+        </div>
+        <button id="train-here" class="btn">From here</button>
+        <button id="train-go" class="primary">Train</button>
+      </div>
+
+      <div class="panel train-panel train-only">
+        <div class="train-top">
+          <span id="t-progress" class="hint"></span>
+          <button id="t-stop" class="btn">Stop</button>
+        </div>
+        <p id="t-prompt" class="t-prompt"></p>
+        <p id="t-feedback" class="t-feedback"></p>
+        <p id="t-note" class="t-note"></p>
+        <button id="t-hint" class="btn">Show me the move</button>
+      </div>
+
+      <div class="path-row build-only">
         <div id="path" class="path"></div>
         <button id="save-line" class="primary" hidden>Save line</button>
       </div>
 
-      <div class="panel">
+      <div class="panel build-only">
         <div class="panel-head">
           <h2 id="moves-title">Your move</h2>
           <span id="moves-hint" class="hint"></span>
@@ -107,13 +127,13 @@
         <p id="moves-tip" class="tip"></p>
       </div>
 
-      <div class="panel">
+      <div class="panel build-only">
         <div class="panel-head"><h2>Note</h2></div>
         <textarea id="note" rows="3" placeholder="Plans, ideas, traps for this position…"></textarea>
         <p id="note-off" class="hint" hidden>Save this line to add a note here.</p>
       </div>
 
-      <div class="panel lines-panel">
+      <div class="panel lines-panel build-only">
         <div class="panel-head">
           <h2>Lines</h2>
           <div class="mini-seg" id="lines-scope">
@@ -125,7 +145,7 @@
         <p id="lines-foot" class="hint"></p>
       </div>
 
-      <p id="stats" class="stats"></p>
+      <p id="stats" class="stats build-only"></p>
     </section>
   </main>
 

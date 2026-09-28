@@ -16,6 +16,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: var(--bg);
@@ -167,3 +168,22 @@ textarea { width: 100%; font: inherit; font-size: 16px; border: 1px solid var(--
 .tip { margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--line); color: var(--muted); font-size: 13px; }
 .tip:empty { display: none; }
 .tip b { color: var(--ink); }
+
+/* ---- training ---- */
+body:not(.training) .train-only, body.training .build-only { display: none !important; }
+.train-bar { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+@media (min-width: 900px) { .train-bar { margin-top: 0; } }
+.train-bar .due { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.train-bar .due b { font-size: 16px; }
+.train-bar .primary:disabled { opacity: 0.4; }
+.train-panel { margin-top: 12px; }
+@media (min-width: 900px) { .train-panel { margin-top: 0; } }
+.train-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.t-prompt { font-size: 22px; font-weight: 700; margin: 10px 0 4px; }
+.t-feedback { margin: 0 0 8px; font-size: 15px; font-weight: 600; min-height: 1.4em; }
+.t-feedback.ok { color: var(--mine); }
+.t-feedback.bad { color: var(--danger); }
+.t-feedback.alt { color: #92610a; }
+.t-note { margin: 0 0 10px; background: #fef9e7; border-left: 3px solid #d4a017; padding: 8px 10px; border-radius: 6px; font-size: 14px; white-space: pre-wrap; }
+.t-note:empty { display: none; }
+.t-summary { font-size: 15px; margin: 0 0 10px; }

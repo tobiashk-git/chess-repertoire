@@ -9,6 +9,7 @@ import { Chess, DEFAULT_POSITION } from './vendor/chess.js';
 import { Board } from './board.js';
 import * as R from './repertoire.js';
 import * as PGN from './pgn.js';
+import * as T from './train.js';
 
 const $ = id => document.getElementById(id);
 const MINE = '#15803d', THEIRS = '#2563eb';
@@ -32,6 +33,7 @@ const persist = () => R.save(data);
 /* ---------- moves ---------- */
 
 function playMove(mv) {
+  if (session) { session.userMove(mv); return; }
   const chess = new Chess(fenAt(cur));
   let m;
   try { m = chess.move(mv); } catch { render(); return; }
@@ -162,6 +164,7 @@ function render() {
   if (document.activeElement !== $('note')) $('note').value = R.node(rep, key)?.note || '';
 
   renderLines(key);
+  renderDue(inRep);
 
   // stats
   const positions = Object.keys(rep.pos).length;
@@ -283,6 +286,81 @@ new IntersectionObserver(([entry]) => {
 }, { threshold: [0, 0.35, 1] }).observe($('board'));
 $('mini').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
+/* ---------- training ---------- */
+
+let session = null;
+
+const ago = ms => {
+  const m = Math.round(ms / 60000);
+  if (m < 60) return `${Math.max(1, m)} min`;
+  const h = Math.round(m / 60);
+  return h < 36 ? `${h} h` : `${Math.round(h / 24)} days`;
+};
+
+function renderDue(inRep) {
+  const s = T.dueSummary(rep);
+  $('due-count').textContent = !s.total ? 'Nothing to train yet'
+    : s.due ? `${s.due} to review` : 'All caught up';
+  $('due-sub').textContent = !s.total ? 'Save some lines first'
+    : s.due ? (s.fresh ? `${s.fresh} new` : `of ${s.total} positions`)
+    : s.next ? `Next review in ${ago(s.next - Date.now())}` : '';
+  $('train-go').disabled = !s.due;
+  $('train-here').hidden = !(cur > 0 && inRep && s.due);
+}
+
+function startTraining(fromHere) {
+  const opts = fromHere ? { prefixKey: R.keyOf(fenAt(cur)), prefixLen: cur } : {};
+  const s = new T.Session(rep, { ...opts, ui: { show: showTrain }, save: persist });
+  if (!s.dueCount()) { toast(fromHere ? 'Nothing due in the lines from here.' : 'Nothing due — all caught up.'); return; }
+  session = s;
+  document.body.classList.add('training');
+  board.setOrientation(rep.side);
+  mini.setOrientation(rep.side);
+  window.scrollTo({ top: 0 });
+  session.start();
+}
+
+function stopTraining() {
+  session?.stop();
+  session = null;
+  board.interactive = true;
+  document.body.classList.remove('training');
+  render();
+}
+
+function showTrain(st) {
+  const chess = new Chess(st.fen);
+  const arrows = st.answer ? [{ from: st.answer.from, to: st.answer.to, color: MINE }] : [];
+  board.interactive = st.phase === 'yourMove';
+  board.set(chess, { lastMove: st.lastMove, arrows });
+  mini.set(chess, { lastMove: st.lastMove, arrows });
+
+  const { tested, firstTry, lines } = st.stats;
+  $('t-progress').textContent = st.phase === 'done' ? `${lines} line${lines === 1 ? '' : 's'} played`
+    : `${st.due} due · ${firstTry}/${tested} first try`;
+  $('t-prompt').textContent = {
+    yourMove: 'Your move', opponent: 'Opponent to move…', lineDone: 'Line complete ✓', done: 'Session complete',
+  }[st.phase];
+
+  const fb = $('t-feedback');
+  if (st.phase === 'done') {
+    const pct = tested ? Math.round(firstTry / tested * 100) : 100;
+    fb.className = 't-feedback ok';
+    fb.textContent = tested ? `${firstTry} of ${tested} found first time (${pct}%). Misses came back until you got them, and will come round sooner.` : 'Nothing left to review.';
+  } else {
+    fb.className = 't-feedback' + (st.feedback ? (st.feedback.alt ? ' alt' : st.feedback.ok ? ' ok' : ' bad') : '');
+    fb.textContent = st.feedback?.text || (st.phase === 'yourMove' ? 'What do you play here?' : '');
+  }
+  $('t-note').textContent = st.phase === 'done' ? '' : st.note;
+  $('t-hint').hidden = st.phase !== 'yourMove' || !!st.answer;
+  $('t-stop').textContent = st.phase === 'done' ? 'Back to builder' : 'Stop';
+}
+
+$('train-go').onclick = () => startTraining(false);
+$('train-here').onclick = () => startTraining(true);
+$('t-stop').onclick = stopTraining;
+$('t-hint').onclick = () => session?.hint();
+
 function countAll() {
   const counter = R.lineCounter(rep);
   return R.movesAt(rep, R.START_KEY).reduce((s, m) => s + counter(DEFAULT_POSITION, m.san), 0);
@@ -308,7 +386,7 @@ $('note').addEventListener('input', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || !$('sheet').hidden) return;
+  if (session || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || !$('sheet').hidden) return;
   if (e.key === 'ArrowLeft') go(cur - 1);
   else if (e.key === 'ArrowRight') next();
   else if (e.key === 'ArrowUp' || e.key === 'Home') go(0);
