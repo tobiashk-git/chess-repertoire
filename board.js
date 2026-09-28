@@ -72,7 +72,7 @@ export class Board {
     [...this.grid.children].forEach((sq, i) => {
       const name = this._nameAt(i);
       const piece = this.chess.get(name);
-      const light = (FILES.indexOf(name[0]) + +name[1]) % 2 === 1;
+      const light = (FILES.indexOf(name[0]) + +name[1]) % 2 === 0;   // a1 dark, h1 light
       sq.className = 'sq ' + (light ? 'light' : 'dark');
       sq.dataset.sq = name;
       if (this.lastMove && (name === this.lastMove.from || name === this.lastMove.to)) sq.classList.add('last');
