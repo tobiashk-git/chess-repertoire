@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2a24">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Repertoire">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <title>Chess Repertoire</title>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">Repertoire</div>
+    <div class="seg" role="tablist" aria-label="Repertoire side">
+      <button id="side-w" data-side="w">White</button>
+      <button id="side-b" data-side="b">Black</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="board-col">
+      <div id="board"></div>
+      <nav class="nav">
+        <button id="nav-first" title="Start">⏮</button>
+        <button id="nav-prev" title="Back">◀</button>
+        <button id="nav-next" title="Forward">▶</button>
+        <button id="nav-last" title="End of line">⏭</button>
+        <button id="nav-flip" title="Flip board">⇅</button>
+      </nav>
+    </section>
+
+    <section class="side-col">
+      <div class="path-row">
+        <div id="path" class="path"></div>
+        <button id="save-line" class="primary" hidden>Save line</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2 id="moves-title">Your move</h2>
+          <span id="moves-hint" class="hint"></span>
+        </div>
+        <ul id="moves" class="moves"></ul>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Note</h2></div>
+        <textarea id="note" rows="3" placeholder="Plans, ideas, traps for this position…"></textarea>
+        <p id="note-off" class="hint" hidden>Save this line to add a note here.</p>
+      </div>
+
+      <p id="stats" class="stats"></p>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
