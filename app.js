@@ -20,6 +20,10 @@ let cur = 0;
 
 const board = new Board($('board'), { onMove: playMove });
 board.setOrientation(rep.side);
+const mini = new Board($('mini-board'));
+mini.interactive = false;
+mini.setOrientation(rep.side);
+let scope = localStorage.getItem('chessrep.scope') || 'here';   // line table: 'here' | 'all'
 
 const fenAt = i => (i === 0 ? DEFAULT_POSITION : line[i - 1].fen);
 const isSaved = i => R.hasMove(rep, R.keyOf(fenAt(i)), line[i].san);
@@ -76,6 +80,7 @@ function switchSide(side) {
   rep = data.reps[side];
   line = []; cur = 0;
   board.setOrientation(side);
+  mini.setOrientation(side);
   persist();
   render();
 }
@@ -97,6 +102,7 @@ function render() {
   }));
   const last = cur > 0 ? line[cur - 1] : null;
   board.set(chess, { lastMove: last && { from: last.from, to: last.to }, arrows });
+  mini.set(chess, { lastMove: last && { from: last.from, to: last.to } });
 
   // side toggle
   $('exp-side-name').textContent = rep.side === 'w' ? 'White' : 'Black';
@@ -145,6 +151,8 @@ function render() {
   $('note-off').hidden = inRep;
   if (document.activeElement !== $('note')) $('note').value = R.node(rep, key)?.note || '';
 
+  renderLines(key);
+
   // stats
   const positions = Object.keys(rep.pos).length;
   const total = positions ? countAll() : 0;
@@ -152,6 +160,118 @@ function render() {
     ? `${rep.side === 'w' ? 'White' : 'Black'} repertoire · ${total} line${total === 1 ? '' : 's'} · ${positions} positions`
     : `${rep.side === 'w' ? 'White' : 'Black'} repertoire is empty`;
 }
+
+/* ---------- line table ---------- */
+
+const plyLabel = (p, san) => `${Math.floor(p / 2) + 1}${p % 2 ? '…' : '.'}${san}`;
+let tableCols = [];   // columns currently drawn, for the tap handler
+
+function renderLines(key) {
+  const all = R.enumerateLines(rep);
+  // label each column by where it leaves the column before it (in full depth-first order)
+  const cols = all.map((moves, i) => {
+    let branch = -1;
+    if (i > 0) { branch = 0; while (all[i - 1][branch]?.san === moves[branch].san) branch++; }
+    return { moves, branch, label: i === 0 ? 'Main line' : plyLabel(branch, moves[branch].san) };
+  });
+
+  // the line on the board as its own dashed column while it has unsaved moves
+  const unsaved = line.some((_, i) => !isSaved(i));
+  if (unsaved) {
+    const moves = line.map(m => ({ san: m.san, uci: m.uci, key: R.keyOf(m.fen) }));
+    let branch = 0;
+    while (line[branch] && isSaved(branch)) branch++;
+    cols.unshift({ moves, branch, label: 'Unsaved', unsaved: true });
+  }
+
+  // "From here": only columns passing through the current position
+  const shown = scope === 'all' || cur === 0 ? cols : cols.filter(c => c.moves[cur - 1]?.key === key);
+
+  // the column you are on: the unsaved one, or the first whose moves start with the board line
+  const matches = c => line.every((m, i) => c.moves[i]?.san === m.san);
+  const active = shown.find(c => c.unsaved) || shown.find(matches);
+
+  for (const b of $('lines-scope').children) b.classList.toggle('on', b.dataset.scope === scope);
+  tableCols = shown;
+  const wrap = $('lines');
+  if (!shown.length) {
+    wrap.innerHTML = `<p class="lines-empty">${all.length ? 'No saved lines pass through this position.' : 'Lines appear here as you save them.'}</p>`;
+    $('lines-foot').textContent = '';
+    return;
+  }
+
+  const plies = Math.max(...shown.map(c => c.moves.length));
+  const mineParity = rep.side === 'w' ? 0 : 1;
+  let h = '<table class="lt"><thead><tr><th class="no" rowspan="2">#</th>';
+  for (const c of shown) {
+    h += `<th class="lname${c === active ? ' act' : ''}${c.unsaved ? ' unsaved' : ''}" colspan="2">${c.label}</th>`;
+  }
+  h += '</tr><tr>';
+  for (const _ of shown) h += '<th class="wb">W</th><th class="wb pb">B</th>';
+  h += '</tr></thead><tbody>';
+  for (let r = 0; r < Math.ceil(plies / 2); r++) {
+    h += `<tr><td class="no">${r + 1}</td>`;
+    shown.forEach((c, ci) => {
+      for (const p of [2 * r, 2 * r + 1]) {
+        const m = c.moves[p];
+        const cls = ['c'];
+        if (p % 2) cls.push('pb');
+        if (m) {
+          if (p % 2 === mineParity) cls.push('mine');
+          if (p < c.branch) cls.push('rep');
+          if (p === c.branch) cls.push('branch');
+          if (c === active) cls.push('actcol');
+          if (c === active && p === cur - 1) cls.push('cur');
+          if (c.unsaved && p >= c.branch) cls.push('unsaved');
+          if (!c.unsaved && rep.pos[m.key]?.note) cls.push('note');
+        }
+        h += `<td class="${cls.join(' ')}"${m ? ` data-c="${ci}" data-p="${p}"` : ''}>${m ? m.san : ''}</td>`;
+      }
+    });
+    h += '</tr>';
+  }
+  wrap.innerHTML = h + '</tbody></table>';
+
+  const n = shown.filter(c => !c.unsaved).length;
+  const capped = all.length >= 300 ? ' (showing the first 300)' : '';
+  $('lines-foot').textContent = (scope === 'all' || cur === 0
+    ? `${n} line${n === 1 ? '' : 's'}`
+    : `${n} of ${all.length} line${all.length === 1 ? '' : 's'} pass through this position`) + capped;
+
+  // keep the active column in view horizontally (never scroll the page vertically)
+  const th = wrap.querySelector('.lname.act');
+  if (th) {
+    const left = th.offsetLeft - 30, right = th.offsetLeft + th.offsetWidth;
+    if (left < wrap.scrollLeft) wrap.scrollLeft = left;
+    else if (right > wrap.scrollLeft + wrap.clientWidth) wrap.scrollLeft = right - wrap.clientWidth;
+  }
+}
+
+// Tap a cell: load that column's whole line onto the board, positioned after that move.
+$('lines').addEventListener('click', e => {
+  const td = e.target.closest('td[data-c]');
+  if (!td) return;
+  const col = tableCols[+td.dataset.c];
+  const chess = new Chess();
+  line = col.moves.map(m => {
+    const mv = chess.move(m.san);
+    return { san: mv.san, from: mv.from, to: mv.to, uci: m.uci || mv.from + mv.to + (mv.promotion || ''), fen: chess.fen() };
+  });
+  cur = +td.dataset.p + 1;
+  render();
+});
+
+for (const b of $('lines-scope').children) b.onclick = () => {
+  scope = b.dataset.scope;
+  try { localStorage.setItem('chessrep.scope', scope); } catch {}
+  render();
+};
+
+// Mini board: on a phone, once the main board scrolls out of view, show the position in a corner.
+new IntersectionObserver(([entry]) => {
+  $('mini').hidden = entry.intersectionRatio > 0.35 || window.innerWidth >= 900;
+}, { threshold: [0, 0.35, 1] }).observe($('board'));
+$('mini').onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
 function countAll() {
   const counter = R.lineCounter(rep);
@@ -164,7 +284,11 @@ $('nav-first').onclick = () => go(0);
 $('nav-prev').onclick = () => go(cur - 1);
 $('nav-next').onclick = next;
 $('nav-last').onclick = () => go(line.length);
-$('nav-flip').onclick = () => board.setOrientation(board.orientation === 'w' ? 'b' : 'w');
+$('nav-flip').onclick = () => {
+  const o = board.orientation === 'w' ? 'b' : 'w';
+  board.setOrientation(o);
+  mini.setOrientation(o);
+};
 $('save-line').onclick = saveLine;
 for (const b of document.querySelectorAll('.seg button')) b.onclick = () => switchSide(b.dataset.side);
 

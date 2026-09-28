@@ -112,9 +112,23 @@
         <p id="note-off" class="hint" hidden>Save this line to add a note here.</p>
       </div>
 
+      <div class="panel lines-panel">
+        <div class="panel-head">
+          <h2>Lines</h2>
+          <div class="mini-seg" id="lines-scope">
+            <button data-scope="here">From here</button>
+            <button data-scope="all">All</button>
+          </div>
+        </div>
+        <div id="lines" class="lines-wrap"></div>
+        <p id="lines-foot" class="hint"></p>
+      </div>
+
       <p id="stats" class="stats"></p>
     </section>
   </main>
+
+  <button id="mini" class="mini" hidden aria-label="Back to the board"><div id="mini-board"></div></button>
 
   <script type="module" src="app.js"></script>
 </body>

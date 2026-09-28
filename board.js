@@ -85,7 +85,8 @@ export class Board {
       if (c === 0) coords += `<span class="rank">${name[1]}</span>`;
       if (r === 7) coords += `<span class="file">${name[0]}</span>`;
       const img = piece ? `<img class="pc" draggable="false" src="pieces/${piece.color}${piece.type.toUpperCase()}.svg" alt="">` : '';
-      sq.innerHTML = coords + img;
+      const html = coords + img;
+      if (sq._html !== html) { sq.innerHTML = html; sq._html = html; }   // untouched squares keep their img (no flicker)
     });
     this._drawArrows();
   }

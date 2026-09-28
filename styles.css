@@ -128,3 +128,38 @@ textarea { width: 100%; font: inherit; font-size: 16px; border: 1px solid var(--
 .toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 64px); z-index: 60; background: var(--ink); color: #fff; border-radius: 12px; padding: 10px 14px; display: flex; gap: 14px; align-items: center; box-shadow: 0 6px 20px rgba(0,0,0,0.3); max-width: calc(100% - 32px); font-size: 14px; }
 .toast[hidden] { display: none; }
 .toast button { border: 0; background: none; color: #9be3b4; font-weight: 700; padding: 0; }
+
+/* ---- line table: one W/B column pair per line, rows are move numbers ---- */
+.mini-seg { display: flex; background: var(--bg); border-radius: 8px; padding: 2px; }
+.mini-seg button { border: 0; background: none; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.mini-seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+.lines-panel { padding-left: 0; padding-right: 0; padding-bottom: 6px; }
+.lines-panel .panel-head { padding: 0 14px; }
+.lines-panel .hint { padding: 6px 14px 0; }
+.lines-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-top: 1px solid var(--line); }
+.lt { border-collapse: separate; border-spacing: 0; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+.lt th, .lt td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0; height: 30px; }
+.lt .no { position: sticky; left: 0; z-index: 2; background: #f6f3ec; color: var(--muted); text-align: center; width: 30px; min-width: 30px; font-size: 11px; border-right: 2px solid #d6cfc0; }
+.lt thead .no { z-index: 3; }
+.lt .lname { background: #f6f3ec; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); padding: 0 6px; white-space: nowrap; text-align: left; border-right: 2px solid #d6cfc0; }
+.lt .lname.act { background: var(--ink); color: #fff; }
+.lt .lname.unsaved { background: #fbfaf7; border-bottom: 1px dashed #c9c2b3; font-style: italic; }
+.lt .wb { background: #f6f3ec; color: var(--muted); font-size: 10px; height: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 600; }
+.lt td.c { min-width: 50px; text-align: center; cursor: pointer; position: relative; white-space: nowrap; padding: 0 5px; }
+.lt td.c.pb, .lt .wb.pb { border-right: 2px solid #d6cfc0; }
+.lt td.c.mine { color: var(--mine); font-weight: 700; }
+.lt td.c.rep { color: #b9b2a4; font-weight: 400; }
+.lt td.c.branch { background: #fef3c7; color: #6b4a00; }
+.lt td.c.actcol { background: #eef4ef; }
+.lt td.c.actcol.branch { background: #fde68a; }
+.lt td.c.cur { box-shadow: inset 0 0 0 2px var(--ink); }
+.lt td.c.note::after { content: ""; position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: #d4a017; }
+.lt td.c.unsaved { color: var(--muted); font-style: italic; }
+.lt td.c:active { background: var(--line); }
+.lines-empty { color: var(--muted); font-size: 14px; padding: 10px 14px 4px; margin: 0; }
+
+/* ---- mini board when the main board is scrolled away (phone) ---- */
+.mini { position: fixed; top: calc(env(safe-area-inset-top) + 8px); right: 10px; z-index: 30; width: 136px; padding: 0; border: 2px solid #fff; border-radius: 6px; background: #fff; box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+.mini[hidden] { display: none; }
+.mini .board { box-shadow: none; border-radius: 3px; }
+.mini .sq .rank, .mini .sq .file { display: none; }

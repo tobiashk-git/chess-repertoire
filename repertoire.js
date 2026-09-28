@@ -109,3 +109,27 @@ export function lineCounter(rep) {
     return count(chess.fen(), new Set());
   };
 }
+
+/* Every complete line in the repertoire, depth first with main moves first — the columns of
+   the line table. Each line is [{ san, uci, key }] where key is the position AFTER the move.
+   A position already on the current path (repetition) ends the line; `cap` bounds huge files. */
+export function enumerateLines(rep, cap = 300) {
+  const out = [];
+  const chess = new Chess();
+  const walk = (fen, path, onPath) => {
+    if (out.length >= cap) return;
+    const key = keyOf(fen);
+    const ms = movesAt(rep, key);
+    if (!ms.length || onPath.has(key)) { if (path.length) out.push(path); return; }
+    onPath.add(key);
+    for (const m of ms) {
+      chess.load(fen);
+      try { chess.move(m.san); } catch { continue; }
+      const next = chess.fen();
+      walk(next, [...path, { san: m.san, uci: m.uci, key: keyOf(next) }], onPath);
+    }
+    onPath.delete(key);
+  };
+  walk(DEFAULT_POSITION, [], new Set());
+  return out;
+}
