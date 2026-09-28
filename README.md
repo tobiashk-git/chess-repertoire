@@ -15,5 +15,9 @@ Each position stores the moves leaving it (the first of *your* moves is the main
 1. Board + repertoire builder ✅
 2. PGN import / export ✅ (menu ⋯: file or paste, depth cap, undo; export, backup, copy)
 3. Spaced-repetition training ✅ (train.js: card = your-turn position, line-based sessions, SM-2-lite)
-4. Model games (lichess masters explorer)
+4. Model games ✅ — bundled, no login: `data/` holds ~24k classical games by 48 all-time greats
+   (PGN Mentor collections, best 700 per player, online/rapid/simul events filtered), indexed by
+   position for the first 15 moves and dealt across five eras per position. Rebuild with
+   `pip install chess` then `python tools/build_games.py`. Theory tab = Wikibooks Chess Opening
+   Theory, fetched live (CC BY-SA). The lichess masters API now needs a login token, hence bundling.
 5. Offline polish + HTTPS deploy (GitHub Pages)

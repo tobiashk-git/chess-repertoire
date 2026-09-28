@@ -10,6 +10,8 @@ import { Board } from './board.js';
 import * as R from './repertoire.js';
 import * as PGN from './pgn.js';
 import * as T from './train.js';
+import * as G from './games.js';
+import * as TH from './theory.js';
 
 const $ = id => document.getElementById(id);
 const MINE = '#15803d', THEIRS = '#2563eb';
@@ -92,6 +94,7 @@ function switchSide(side) {
 /* ---------- render ---------- */
 
 function render() {
+  if (viewer) { showViewer(); return; }
   const fen = fenAt(cur);
   const key = R.keyOf(fen);
   const chess = new Chess(fen);
@@ -165,6 +168,7 @@ function render() {
 
   renderLines(key);
   renderDue(inRep);
+  scheduleStudy(inRep);
 
   // stats
   const positions = Object.keys(rep.pos).length;
@@ -361,6 +365,199 @@ $('train-here').onclick = () => startTraining(true);
 $('t-stop').onclick = stopTraining;
 $('t-hint').onclick = () => session?.hint();
 
+/* ---------- study: master games + theory ---------- */
+
+let studyTab = localStorage.getItem('chessrep.study') || 'games';
+let studyToken = 0, studyTimer = null, studyKey = null, studyAll = false, studyInRep = false;
+
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function scheduleStudy(inRep) {
+  studyInRep = inRep;
+  for (const b of $('study-tabs').children) b.classList.toggle('on', b.dataset.tab === studyTab);
+  $('study-games').hidden = studyTab !== 'games';
+  $('study-theory').hidden = studyTab !== 'theory';
+  const pos = line.slice(0, cur).map(m => m.san).join(' ');
+  const key = studyTab + '|' + pos;
+  if (key === studyKey) return;          // same position and tab: keep what is shown
+  if (studyKey && studyKey.split('|')[1] !== pos) studyAll = false;
+  studyKey = key;
+  clearTimeout(studyTimer);
+  studyTimer = setTimeout(studyTab === 'games' ? loadGames : loadTheory, 180);
+}
+
+async function loadGames() {
+  const token = ++studyToken;
+  const el = $('study-games');
+  const fen = fenAt(cur), key = R.keyOf(fen);
+  if (cur === 0) {
+    const m = await G.meta().catch(() => null);
+    if (token === studyToken) el.innerHTML = `<p class="hint">Play or pick a first move to see the master games${m ? ` — ${m.games.toLocaleString()} classical games by ${m.players.length} of the all-time greats` : ''}.</p>`;
+    return;
+  }
+  let res;
+  try { res = await G.gamesAt(fen, cur); }
+  catch { if (token === studyToken) el.innerHTML = '<p class="hint">Could not load the games collection — are you offline?</p>'; return; }
+  if (token !== studyToken) return;
+
+  if (res.beyond) {
+    el.innerHTML = '<p class="hint">Master games are indexed for the first 15 moves. Step back to see the games that reached this line.</p>';
+    return;
+  }
+  const { games } = res;
+  if (!games.length) {
+    el.innerHTML = `<p class="hint">None of the ${res.total.toLocaleString()} master games in the collection reach this position.</p>`;
+    return;
+  }
+  const next = G.nextMoves(games).slice(0, 6);
+  const shown = studyAll ? games : games.slice(0, 8);
+  el.innerHTML = `
+    <p class="g-sum">${games.length}${games.length >= 40 ? '+' : ''} master game${games.length === 1 ? '' : 's'} reach this position${next.length ? ' — played here:' : ''}</p>
+    ${next.length ? `<div class="chips">${next.map(m => `<span class="chip${R.hasMove(rep, key, m.san) ? ' mine' : ''}">${esc(m.san)}<small>${m.n}</small></span>`).join('')}</div>` : ''}
+    <ul class="glist">${shown.map((g, i) => `
+      <li><button data-i="${i}">
+        <span class="who">${esc(g.white)} – ${esc(g.black)}</span>
+        <span class="res${g.result === '1-0' || g.result === '0-1' ? ' w' : ''}">${esc(g.result.replace('1/2-1/2', '½-½'))}</span>
+        <span class="meta">${esc([g.event, g.year || ''].filter(Boolean).join(' · '))}${g.eco ? ' · ' + esc(g.eco) : ''}</span>
+      </button></li>`).join('')}</ul>
+    ${games.length > shown.length ? `<button class="btn more" id="g-more">Show all ${games.length}</button>` : ''}`;
+  el.querySelectorAll('.glist button').forEach(b => b.onclick = () => openGame(shown[+b.dataset.i]));
+  $('g-more')?.addEventListener('click', () => { studyAll = true; studyKey = null; scheduleStudy(studyInRep); });
+}
+
+async function loadTheory() {
+  const token = ++studyToken;
+  const el = $('study-theory');
+  const sans = line.slice(0, cur).map(m => m.san);
+  el.innerHTML = '<p class="hint">Loading…</p>';
+  let t;
+  try { t = await TH.theoryFor(sans); }
+  catch { if (token === studyToken) el.innerHTML = '<p class="hint">Could not reach Wikibooks — are you offline?</p>'; return; }
+  if (token !== studyToken) return;
+  if (t.missing || !t.blocks.length) {
+    el.innerHTML = '<div class="theory"><p class="hint">Wikibooks has no article for this exact move order yet.</p></div>';
+    return;
+  }
+  const link = `<a href="${esc(TH.pageUrl(t.title))}" target="_blank" rel="noopener">`;
+  const box = document.createElement('div');
+  box.className = 'theory';
+  const body = document.createElement('div');
+  let list = null;
+  for (const b of t.blocks.slice(0, 40)) {
+    if (b.tag === 'li') {
+      if (!list) { list = document.createElement('ul'); body.appendChild(list); }
+      const li = document.createElement('li'); li.textContent = b.text; list.appendChild(li);
+      continue;
+    }
+    list = null;
+    const n = document.createElement(b.tag === 'h' ? 'h3' : 'p');
+    n.textContent = b.text;
+    body.appendChild(n);
+  }
+  if (t.blocks.length > 8) body.className = 'clip';
+  box.appendChild(body);
+  box.insertAdjacentHTML('beforeend', `<p class="src">${t.blocks.length > 8 ? `${link}Read the full article</a> · ` : ''}From Wikibooks <i>${esc(t.title)}</i> (${link}CC BY-SA</a>)</p>`);
+  el.replaceChildren(box);
+}
+
+for (const b of $('study-tabs').children) b.onclick = () => {
+  studyTab = b.dataset.tab;
+  try { localStorage.setItem('chessrep.study', studyTab); } catch {}
+  scheduleStudy(studyInRep);
+};
+
+/* ---------- game viewer ---------- */
+
+let viewer = null;   // { g, ply, leave, noteKey }
+
+function openGame(g, ply = g.at) {
+  // the first move of the game that is not in the repertoire
+  const chess = new Chess();
+  let leave = 0;
+  while (leave < g.moves.length && R.hasMove(rep, R.keyOf(chess.fen()), g.moves[leave])) chess.move(g.moves[leave++]);
+  const noteKey = viewer ? viewer.noteKey : studyInRep ? R.keyOf(fenAt(cur)) : null;
+  viewer = { g, ply, leave, noteKey };
+  document.body.classList.add('viewing');
+  board.interactive = false;
+  window.scrollTo({ top: 0 });
+  showViewer();
+}
+
+function closeGame() {
+  viewer = null;
+  board.interactive = true;
+  document.body.classList.remove('viewing');
+  studyKey = null;                       // refresh chips: the repertoire may have grown
+  render();
+}
+
+function viewerGo(p) {
+  viewer.ply = Math.max(0, Math.min(viewer.g.moves.length, p));
+  showViewer();
+}
+
+function showViewer() {
+  const { g, ply, leave } = viewer;
+  const chess = new Chess();
+  let last = null;
+  for (let i = 0; i < ply; i++) last = chess.move(g.moves[i]);
+  const lastMove = last && { from: last.from, to: last.to };
+  board.set(chess, { lastMove });
+  mini.set(chess, { lastMove });
+
+  const elo = n => (n ? ` (${n})` : '');
+  $('v-players').textContent = `${g.white}${elo(g.wElo)} – ${g.black}${elo(g.bElo)}`;
+  $('v-event').textContent = [g.event, g.site, g.year || '', g.result.replace('1/2-1/2', '½-½')].filter(Boolean).join(' · ');
+  const label = p => `${Math.floor(p / 2) + 1}${p % 2 ? '…' : '.'}${g.moves[p]}`;
+  $('v-status').innerHTML = (leave === 0 ? 'Leaves your repertoire at the first move.'
+    : leave >= g.moves.length ? 'Follows your repertoire all the way.'
+    : `Follows your repertoire until <b>${esc(label(leave))}</b>.`) + ` Move ${Math.ceil(ply / 2)} of ${Math.ceil(g.moves.length / 2)}.`;
+
+  const list = $('v-moves');
+  list.innerHTML = g.moves.map((san, i) =>
+    (i % 2 ? '' : `<span class="num">${i / 2 + 1}.</span>`) +
+    `<button data-p="${i + 1}" class="${i < leave ? 'in' : ''}${i === ply - 1 ? ' cur' : ''}">${esc(san)}</button>`).join(' ');
+  list.querySelectorAll('button').forEach(b => b.onclick = () => viewerGo(+b.dataset.p));
+  const curBtn = list.querySelector('.cur');
+  if (curBtn) {
+    const top = curBtn.offsetTop - list.offsetTop;
+    if (top < list.scrollTop || top > list.scrollTop + list.clientHeight - 30) list.scrollTop = top - 60;
+  }
+  $('v-save').disabled = ply === 0;
+  $('v-note').hidden = !viewer.noteKey;
+}
+
+$('v-close').onclick = closeGame;
+$('v-first').onclick = () => viewerGo(0);
+$('v-prev').onclick = () => viewerGo(viewer.ply - 1);
+$('v-next').onclick = () => viewerGo(viewer.ply + 1);
+$('v-last').onclick = () => viewerGo(Infinity);
+$('v-save').onclick = () => {
+  const chess = new Chess();
+  let added = 0;
+  for (const san of viewer.g.moves.slice(0, viewer.ply)) {
+    const key = R.keyOf(chess.fen());
+    const m = chess.move(san);
+    if (!R.hasMove(rep, key, m.san)) { R.addMove(rep, key, m.san, m.from + m.to + (m.promotion || '')); added++; }
+  }
+  persist();
+  toast(added ? `Added ${added} new move${added === 1 ? '' : 's'} to your repertoire.` : 'Those moves are already in your repertoire.');
+  openGame(viewer.g, viewer.ply);       // recompute where it now leaves the repertoire
+};
+$('v-note').onclick = () => {
+  const g = viewer.g;
+  const ref = `Model game: ${g.white} – ${g.black}, ${[g.event, g.year].filter(Boolean).join(' ')} (${g.result})`;
+  const n = R.node(rep, viewer.noteKey);
+  if (n?.note?.includes(ref)) { toast('Already in the note.'); return; }
+  R.setNote(rep, viewer.noteKey, n?.note ? n.note + '\n' + ref : ref);
+  persist();
+  toast('Added to the note for this position.');
+};
+$('v-copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(G.pgnOf(viewer.g)); toast('Game copied as PGN.'); }
+  catch { toast('Copy failed.'); }
+};
+
 function countAll() {
   const counter = R.lineCounter(rep);
   return R.movesAt(rep, R.START_KEY).reduce((s, m) => s + counter(DEFAULT_POSITION, m.san), 0);
@@ -386,6 +583,11 @@ $('note').addEventListener('input', e => {
 });
 
 document.addEventListener('keydown', e => {
+  if (viewer && !['TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+    const k = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -999, Home: -999, ArrowDown: 999, End: 999 }[e.key];
+    if (k) { viewerGo(viewer.ply + k); e.preventDefault(); }
+    return;
+  }
   if (session || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || !$('sheet').hidden) return;
   if (e.key === 'ArrowLeft') go(cur - 1);
   else if (e.key === 'ArrowRight') next();

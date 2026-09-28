@@ -113,6 +113,29 @@
         <button id="t-hint" class="btn">Show me the move</button>
       </div>
 
+      <div class="panel viewer view-only">
+        <div class="train-top">
+          <div class="v-title">
+            <b id="v-players"></b>
+            <span id="v-event" class="hint"></span>
+          </div>
+          <button id="v-close" class="btn">Close</button>
+        </div>
+        <p id="v-status" class="v-status"></p>
+        <div class="nav v-nav">
+          <button id="v-first" title="Start">⏮</button>
+          <button id="v-prev" title="Back">◀</button>
+          <button id="v-next" title="Forward">▶</button>
+          <button id="v-last" title="End">⏭</button>
+        </div>
+        <div id="v-moves" class="v-moves"></div>
+        <div class="row">
+          <button id="v-save" class="btn">Add moves to here to repertoire</button>
+          <button id="v-note" class="btn">Add to note</button>
+          <button id="v-copy" class="btn">Copy PGN</button>
+        </div>
+      </div>
+
       <div class="path-row build-only">
         <div id="path" class="path"></div>
         <button id="save-line" class="primary" hidden>Save line</button>
@@ -131,6 +154,18 @@
         <div class="panel-head"><h2>Note</h2></div>
         <textarea id="note" rows="3" placeholder="Plans, ideas, traps for this position…"></textarea>
         <p id="note-off" class="hint" hidden>Save this line to add a note here.</p>
+      </div>
+
+      <div class="panel study build-only">
+        <div class="panel-head">
+          <h2>Study</h2>
+          <div class="mini-seg" id="study-tabs">
+            <button data-tab="games">Master games</button>
+            <button data-tab="theory">Theory</button>
+          </div>
+        </div>
+        <div id="study-games"></div>
+        <div id="study-theory" hidden></div>
       </div>
 
       <div class="panel lines-panel build-only">
