@@ -12,6 +12,7 @@ import * as PGN from './pgn.js';
 import * as T from './train.js';
 import * as G from './games.js';
 import * as TH from './theory.js';
+import * as O from './openings.js';
 
 const $ = id => document.getElementById(id);
 const MINE = '#15803d', THEIRS = '#2563eb';
@@ -170,6 +171,10 @@ function render() {
   renderDue(inRep);
   scheduleStudy(inRep);
 
+  // the opening on the board
+  const here = O.nameOf(line.slice(0, cur).map(m => R.keyOf(m.fen)));
+  $('opening-name').textContent = here ? `${here.eco} · ${here.name}` : '';
+
   // stats
   const positions = Object.keys(rep.pos).length;
   const total = positions ? countAll() : 0;
@@ -191,6 +196,8 @@ function renderLines(key) {
     if (i > 0) { branch = 0; while (all[i - 1][branch]?.san === moves[branch].san) branch++; }
     return { moves, branch, label: i === 0 ? 'Main line' : plyLabel(branch, moves[branch].san) };
   });
+  for (const c of cols) c.name = O.nameOf(c.moves.map(m => m.key));
+  renderJump(cols);
 
   // the line on the board as its own dashed column while it has unsaved moves
   const unsaved = line.some((_, i) => !isSaved(i));
@@ -198,7 +205,7 @@ function renderLines(key) {
     const moves = line.map(m => ({ san: m.san, uci: m.uci, key: R.keyOf(m.fen) }));
     let branch = 0;
     while (line[branch] && isSaved(branch)) branch++;
-    cols.unshift({ moves, branch, label: 'Unsaved', unsaved: true });
+    cols.unshift({ moves, branch, label: 'Unsaved', unsaved: true, name: O.nameOf(moves.map(m => m.key)) });
   }
 
   // "From here": only columns passing through the current position
@@ -219,9 +226,22 @@ function renderLines(key) {
 
   const plies = Math.max(...shown.map(c => c.moves.length));
   const mineParity = rep.side === 'w' ? 0 : 1;
-  let h = '<table class="lt"><thead><tr><th class="no" rowspan="2">#</th>';
+  const fam = c => c.name?.family || (O.ready() ? 'Unnamed' : '');
+  let h = '<table class="lt"><thead><tr><th class="no" rowspan="3">#</th>';
+  // row 1: opening families spanning their consecutive columns
+  for (let i = 0; i < shown.length;) {
+    let j = i;
+    while (j + 1 < shown.length && fam(shown[j + 1]) === fam(shown[i])) j++;
+    const isAct = shown.slice(i, j + 1).includes(active);
+    h += `<th class="fam${isAct ? ' act' : ''}" colspan="${2 * (j - i + 1)}"><span>${esc(fam(shown[i]))}</span></th>`;
+    i = j + 1;
+  }
+  h += '</tr><tr>';
+  // row 2: the variation (ECO + name), and where the column branches off
   for (const c of shown) {
-    h += `<th class="lname${c === active ? ' act' : ''}${c.unsaved ? ' unsaved' : ''}" colspan="2">${c.label}</th>`;
+    const v = c.name ? `${c.name.eco} ${c.name.variation || ''}`.trim() : '';
+    h += `<th class="lname${c === active ? ' act' : ''}${c.unsaved ? ' unsaved' : ''}" colspan="2">` +
+      `<span class="vn">${esc(v)}</span><span class="bl">${esc(c.label)}</span></th>`;
   }
   h += '</tr><tr>';
   for (const _ of shown) h += '<th class="wb">W</th><th class="wb pb">B</th>';
@@ -264,19 +284,77 @@ function renderLines(key) {
   }
 }
 
-// Tap a cell: load that column's whole line onto the board, positioned after that move.
-$('lines').addEventListener('click', e => {
-  const td = e.target.closest('td[data-c]');
-  if (!td) return;
-  const col = tableCols[+td.dataset.c];
+// Load a column's whole line onto the board, positioned after move index p.
+function loadColumn(col, p) {
   const chess = new Chess();
   line = col.moves.map(m => {
     const mv = chess.move(m.san);
     return { san: mv.san, from: mv.from, to: mv.to, uci: m.uci || mv.from + mv.to + (mv.promotion || ''), fen: chess.fen() };
   });
-  cur = +td.dataset.p + 1;
+  cur = p + 1;
+}
+
+// Tap a cell: load that line, positioned after that move.
+$('lines').addEventListener('click', e => {
+  const td = e.target.closest('td[data-c]');
+  if (!td) return;
+  loadColumn(tableCols[+td.dataset.c], +td.dataset.p);
   render();
 });
+
+/* "Jump to opening": every family in the repertoire, with its variations. Picking one puts the
+   board where that opening starts, narrows the table to it and brings the table into view. */
+let jumpTargets = [];
+
+function renderJump(cols) {
+  const sel = $('lines-jump');
+  if (!O.ready() || !cols.length) { sel.hidden = true; return; }
+  const fams = new Map();
+  for (const c of cols) {
+    if (!c.name) continue;
+    const keys = c.moves.map(m => m.key);
+    const f = fams.get(c.name.family) || { n: 0, col: c, ply: O.familyStart(keys, c.name.family), vars: new Map() };
+    f.n++;
+    fams.set(c.name.family, f);
+    if (c.name.variation) {
+      // group by the main variation ("Najdorf Variation"), not its sub-lines ("..., English Attack")
+      const label = c.name.variation.split(',')[0].trim();
+      const name = `${c.name.family}: ${label}`;
+      let v = f.vars.get(name);
+      if (!v) {
+        const start = O.nameStart(keys, name);
+        v = { n: 0, col: c, ply: start ? start.ply : c.name.ply, label, eco: start ? start.eco : c.name.eco };
+        f.vars.set(name, v);
+      }
+      v.n++;
+    }
+  }
+  jumpTargets = [];
+  const opt = (label, target) => { jumpTargets.push(target); return `<option value="${jumpTargets.length - 1}">${esc(label)}</option>`; };
+  let h = '<option value="">Jump to opening…</option>';
+  for (const [family, f] of [...fams].sort((a, b) => a[0].localeCompare(b[0]))) {
+    h += `<optgroup label="${esc(family)}">` + opt(`${family} — all ${f.n} line${f.n === 1 ? '' : 's'}`, f);
+    for (const v of [...f.vars.values()].sort((a, b) => a.label.localeCompare(b.label)))
+      h += opt(`${v.eco} ${v.label}${v.n > 1 ? ` (${v.n})` : ''}`, v);
+    h += '</optgroup>';
+  }
+  if (sel.dataset.html !== h) { sel.innerHTML = h; sel.dataset.html = h; }
+  sel.value = '';
+  sel.hidden = false;
+}
+
+$('lines-jump').addEventListener('change', e => {
+  const t = jumpTargets[+e.target.value];
+  e.target.value = '';
+  if (!t || t.ply < 0) return;
+  loadColumn(t.col, t.ply);
+  scope = 'here';
+  try { localStorage.setItem('chessrep.scope', scope); } catch {}
+  render();
+  $('lines-jump').closest('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+O.load().then(() => { if (!session) render(); }).catch(() => {});
 
 for (const b of $('lines-scope').children) b.onclick = () => {
   scope = b.dataset.scope;

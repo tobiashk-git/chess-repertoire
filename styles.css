@@ -226,3 +226,16 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 .v-moves button.in { color: var(--mine); }
 .v-moves button.cur { background: var(--ink); color: #fff; }
 @media (max-width: 899px) { .layout { padding-bottom: 150px; } }
+
+/* ---- opening names ---- */
+.opening { margin: 12px 0 -4px; font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 0.01em; }
+.opening:empty { display: none; }
+@media (min-width: 900px) { .opening { margin-top: 0; } }
+.jump { display: block; margin: 0 14px 10px; width: calc(100% - 28px); font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: #fbfaf7; color: var(--ink); }
+.lt .fam { background: #ebe5d8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; font-weight: 700; color: var(--ink); text-align: left; padding: 0 6px; white-space: nowrap; height: 26px; border-right: 2px solid #d6cfc0; }
+.lt .fam span { position: sticky; left: 36px; }
+.lt .fam.act { background: var(--accent); color: #fff; }
+.lt .lname { height: auto; padding: 4px 6px; vertical-align: top; white-space: normal; max-width: 128px; }
+.lt .lname .vn { display: block; font-size: 11px; line-height: 1.25; color: var(--ink); font-weight: 700; }
+.lt .lname .bl { display: block; font-size: 11px; font-weight: 400; margin-top: 2px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.lt .lname.act .vn { color: #fff; }
