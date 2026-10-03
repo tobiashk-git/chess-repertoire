@@ -26,6 +26,20 @@ Collect anything fiddly or wrong here and fix it first:
 
 - …
 
+**Up next (user setting up a Lichess account, 2026-10-03):** workflow = build in Lichess
+studies on the PC → import into the app on the PC → Publish → phone trains on the go.
+
+- **Import from link** (PC first): paste a Lichess study, chapter or game link; the app fetches
+  the PGN (`https://lichess.org/api/study/{id}.pgn` — CORS-open, no token, verified for public
+  studies; chapter = `/api/study/{id}/{chapterId}.pgn`, game = `/game/export/{id}`) and runs the
+  normal import preview. Studies must be Public or Unlisted (Private would need a token).
+  Re-importing an updated study only adds the new moves.
+- **Paste from clipboard** button in the import panel (one tap; helps chess.com and the
+  Lichess analysis board, whose shared links cannot be fetched).
+- Chess.com shared analysis links are not importable (PGN loaded privately, no CORS) — copy PGN instead.
+- Optional once the account exists: a Lichess token on the PC could add live
+  masters/Lichess-database stats to the Study panel.
+
 ## Next — Phase B: family / multiple users
 
 Goal: other family members can use the app with their own repertoires, follow or copy each
