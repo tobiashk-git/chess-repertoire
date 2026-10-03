@@ -164,7 +164,17 @@
         <p id="t-feedback" class="t-feedback"></p>
         <p id="t-note" class="t-note"></p>
         <button id="t-hint" class="btn">Show me the move</button>
-        <button id="t-next" class="primary" hidden>Next line</button>
+        <div class="row t-end">
+          <button id="t-next" class="primary" hidden>Next line</button>
+          <button id="t-note-btn" class="btn" hidden>Note this position</button>
+        </div>
+        <div id="t-note-edit" class="t-note-edit" hidden>
+          <textarea id="t-note-text" rows="3" placeholder="Plans, ideas, traps for this position…"></textarea>
+          <div class="row">
+            <button id="t-note-save" class="primary">Save note</button>
+            <button id="t-note-cancel" class="btn">Cancel</button>
+          </div>
+        </div>
       </div>
 
       <div class="panel viewer view-only">

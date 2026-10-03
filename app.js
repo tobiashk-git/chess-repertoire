@@ -484,6 +484,11 @@ function showTrain(st) {
   $('t-note').textContent = st.phase === 'done' ? '' : st.note;
   $('t-hint').hidden = st.phase !== 'yourMove' || !!st.answer;
   $('t-next').hidden = st.phase !== 'lineDone';
+  // at the end of a line you can write (or edit) the note for the final position
+  trainEndKey = st.phase === 'lineDone' ? st.keys[st.keys.length - 1] : null;
+  $('t-note-btn').hidden = !trainEndKey;
+  $('t-note-btn').textContent = st.note ? 'Edit note' : 'Note this position';
+  if (!trainEndKey) $('t-note-edit').hidden = true;
   $('t-next').textContent = st.mode === 'game' ? 'Next game' : 'Next line';
   if (st.phase === 'lineDone') {
     // the end position is worth a look: name the opening and leave the board as it is
@@ -502,8 +507,29 @@ $('t-stop').onclick = stopTraining;
 $('t-hint').onclick = () => session?.hint();
 $('t-next').onclick = () => session?.next();
 document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA') return;
   if (session && !$('t-next').hidden && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight')) { e.preventDefault(); session.next(); }
 });
+
+let trainEndKey = null;
+$('t-note-btn').onclick = () => {
+  $('t-note-text').value = R.node(rep, trainEndKey)?.note || '';
+  $('t-note-edit').hidden = false;
+  $('t-note-btn').hidden = true;
+  $('t-note-text').focus();
+};
+$('t-note-cancel').onclick = () => { $('t-note-edit').hidden = true; $('t-note-btn').hidden = !trainEndKey; };
+$('t-note-save').onclick = () => {
+  if (!trainEndKey) return;
+  const text = $('t-note-text').value.trim();
+  R.setNote(rep, trainEndKey, text);
+  persist();
+  $('t-note').textContent = text;
+  $('t-note-edit').hidden = true;
+  $('t-note-btn').hidden = false;
+  $('t-note-btn').textContent = text ? 'Edit note' : 'Note this position';
+  toast(text ? 'Note saved.' : 'Note removed.');
+};
 
 /* ---------- study: master games + theory ---------- */
 

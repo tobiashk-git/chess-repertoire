@@ -268,3 +268,7 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 .ts-mode:not(:disabled):active { background: var(--line); }
 .ts-mode:disabled { opacity: 0.45; }
 .ts-rule { margin: 10px 0 0; font-size: 12px; }
+
+/* ---- note from the end of a training line ---- */
+.t-end:not(:has(button:not([hidden]))) { display: none; }
+.t-note-edit { margin-top: 10px; }
