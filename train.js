@@ -180,8 +180,7 @@ export class Session {
         this.queue.push(this.line);               // one more go at a line you slipped on
         this.stats.total++;
       }
-      this.show({ phase: 'lineDone' });
-      this.timer = setTimeout(() => this.nextLine(), 1100);
+      this.show({ phase: 'lineDone' });   // stay on the final position until you choose to move on
       return;
     }
     if (!this.step.mine) {
@@ -239,6 +238,11 @@ export class Session {
     this.fail(`${m.san} isn't your move here. Play the arrow.`);
   }
 
+  // From the end of a line: on to the next one (or the summary).
+  next() {
+    if (!this.done && this.line && this.p >= this.line.length) this.nextLine();
+  }
+
   hint() {
     if (this.step?.mine) this.fail(`Your move here is ${this.step.san}.`);
   }
@@ -265,6 +269,7 @@ export class Session {
       answer: this.missed && this.step?.mine ? this.step : null,
       feedback: this.feedback,
       note: last ? this.rep.pos[R.keyOf(last.after)]?.note || '' : '',
+      keys: this.line ? this.line.slice(0, this.p).map(s => R.keyOf(s.after)) : [],
       due: this.dueCount(),
       stats: this.stats,
     });

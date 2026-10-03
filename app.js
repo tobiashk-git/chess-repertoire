@@ -463,7 +463,7 @@ function showTrain(st) {
   const unit = st.mode === 'game' ? 'Game' : 'Line';
   $('t-progress').textContent = st.phase === 'done' ? `${lines} ${unit.toLowerCase()}${lines === 1 ? '' : 's'} played`
     : st.mode === 'due' ? `${st.due} due · ${firstTry}/${tested} first try`
-    : `${unit} ${Math.min(lines + 1, total)} of ${total} · ${firstTry}/${tested} first try`;
+    : `${unit} ${Math.min(lines + (st.phase === 'lineDone' ? 0 : 1), total)} of ${total} · ${firstTry}/${tested} first try`;
   $('t-prompt').textContent = {
     yourMove: 'Your move', opponent: 'Opponent to move…',
     lineDone: st.mode === 'game' ? 'End of your preparation ✓' : 'Line complete ✓', done: 'Session complete',
@@ -483,6 +483,14 @@ function showTrain(st) {
   }
   $('t-note').textContent = st.phase === 'done' ? '' : st.note;
   $('t-hint').hidden = st.phase !== 'yourMove' || !!st.answer;
+  $('t-next').hidden = st.phase !== 'lineDone';
+  $('t-next').textContent = st.mode === 'game' ? 'Next game' : 'Next line';
+  if (st.phase === 'lineDone') {
+    // the end position is worth a look: name the opening and leave the board as it is
+    const name = O.nameOf(st.keys);
+    fb.className = 't-feedback ok';
+    fb.textContent = (st.feedback?.ok ? st.feedback.text + ' · ' : '') + (name ? `${name.eco} · ${name.name}` : '');
+  }
   $('t-stop').textContent = st.phase === 'done' ? 'Back to builder' : 'Stop';
 }
 
@@ -492,6 +500,10 @@ for (const b of $('ts-scope').children) b.onclick = () => { tsScope = b.dataset.
 for (const b of document.querySelectorAll('.ts-mode')) b.onclick = () => startTraining(b.dataset.mode);
 $('t-stop').onclick = stopTraining;
 $('t-hint').onclick = () => session?.hint();
+$('t-next').onclick = () => session?.next();
+document.addEventListener('keydown', e => {
+  if (session && !$('t-next').hidden && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight')) { e.preventDefault(); session.next(); }
+});
 
 /* ---------- study: master games + theory ---------- */
 
