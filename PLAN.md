@@ -16,6 +16,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | 4 | Study panel: ~24k bundled master games by position + Wikibooks theory, game viewer | 2026-09-28 |
 | — | Opening names (ECO) on the line table, "Jump to opening" selector | 2026-10-03 |
 | — | Training chooser: All lines / From here × Review due, Practise (ignores schedule), Real game (master-weighted replies, first move included) | 2026-10-03 |
+| — | Training end-of-line: stays on the final position (opening name + note) until Next; Note this position button | 2026-10-03 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now
