@@ -239,3 +239,12 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 .lt .lname .vn { display: block; font-size: 11px; line-height: 1.25; color: var(--ink); font-weight: 700; }
 .lt .lname .bl { display: block; font-size: 11px; font-weight: 400; margin-top: 2px; font-family: ui-monospace, Menlo, Consolas, monospace; }
 .lt .lname.act .vn { color: #fff; }
+
+/* ---- master sync ---- */
+.field input { font: inherit; font-size: 16px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: #fbfaf7; color: var(--ink); min-width: 0; width: 60%; }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; font-size: inherit; }
+.banner { position: sticky; top: 0; z-index: 35; background: #fef9e7; border-bottom: 2px solid #d4a017; padding: 10px 16px 12px; }
+.banner p { margin: 0; font-size: 15px; }
+.banner .row { margin-top: 8px; }
+.status-ok { color: var(--mine); }
+.status-bad { color: var(--danger); }

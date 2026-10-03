@@ -13,6 +13,7 @@ import * as T from './train.js';
 import * as G from './games.js';
 import * as TH from './theory.js';
 import * as O from './openings.js';
+import * as S from './sync.js';
 
 const $ = id => document.getElementById(id);
 const MINE = '#15803d', THEIRS = '#2563eb';
@@ -678,12 +679,13 @@ document.addEventListener('keydown', e => {
 /* ---------- PGN sheet: import / export ---------- */
 
 let pending = null;        // parsed games awaiting the Import button
-let undoSnapshot = null;   // reps as they were before the last import
+let undoSnapshot = null;   // reps as they were before the last import / master update
+let undoSync = null;       // data.sync as it was, when the undo is for a master update
 
 const clone = x => JSON.parse(JSON.stringify(x));
 const sideName = s => (s === 'w' ? 'White' : 'Black');
 
-function openSheet() { resetImport(); $('toast').hidden = true; $('sheet').hidden = false; }
+function openSheet() { resetImport(); renderSync(); loadFollowList(); $('toast').hidden = true; $('sheet').hidden = false; }
 function closeSheet() { $('sheet').hidden = true; resetImport(); }
 
 function resetImport() {
@@ -698,7 +700,26 @@ function resetImport() {
 // A backup file tags every game with [Repertoire "w"|"b"]; those go back to their own side.
 const isBackup = games => games.every(g => g.headers.Repertoire === 'w' || g.headers.Repertoire === 'b');
 
+let pendingBackup = null;  // a full JSON backup awaiting Restore
+
 function readPgn(text) {
+  pendingBackup = null;
+  if (text.trim().startsWith('{')) {
+    let b = null;
+    try { b = JSON.parse(text); } catch {}
+    if (b?.kind !== 'chess-repertoire-backup' || !b.reps?.w || !b.reps?.b) { toast('That file is not a repertoire backup.'); return; }
+    pendingBackup = b;
+    pending = [];
+    $('imp-summary').textContent = `Full backup from ${new Date(b.saved).toLocaleString()}.`;
+    $('imp-options').hidden = true;
+    $('imp-preview').textContent = 'Restoring replaces both repertoires on this device — moves, notes and training progress.';
+    $('imp-go').disabled = false;
+    $('imp-go').textContent = 'Restore';
+    $('import-start').hidden = true;
+    $('import-review').hidden = false;
+    return;
+  }
+  $('imp-go').textContent = 'Import';
   const games = PGN.parse(text).filter(g => g.root.children.length);
   if (!games.length) { toast('No moves found in that PGN.'); return; }
   pending = games;
@@ -721,6 +742,10 @@ function hasVariations(node) {
 
 // Runs the import against copies of the repertoires; returns the copies and the counts.
 function simulate() {
+  if (pendingBackup) {
+    const reps = clone(pendingBackup.reps);
+    return { reps, total: { games: 0, moves: 0, added: 0, skipped: 0, bad: 0 } };
+  }
   const reps = clone(data.reps);
   const total = { games: 0, moves: 0, added: 0, skipped: 0, bad: 0 };
   const add = r => { for (const k in total) total[k] += r[k]; };
@@ -746,19 +771,21 @@ function updatePreview() {
 function doImport() {
   const { reps, total } = simulate();
   undoSnapshot = clone(data.reps);
+  undoSync = null;
   data.reps = reps;
   rep = data.reps[data.active];
   line = []; cur = 0;
   persist();
   closeSheet();
   render();
-  toast(`Imported ${total.added} new move${total.added === 1 ? '' : 's'}.`, true);
+  toast(pendingBackup ? 'Backup restored.' : `Imported ${total.added} new move${total.added === 1 ? '' : 's'}.`, true);
 }
 
 function undoImport() {
   if (!undoSnapshot) return;
   data.reps = undoSnapshot;
   undoSnapshot = null;
+  if (undoSync) { data.sync = undoSync; undoSync = null; renderSync(); }
   rep = data.reps[data.active];
   line = []; cur = 0;
   persist();
@@ -791,7 +818,7 @@ async function deliver(text, filename) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const backupText = () => ['w', 'b'].map(s => PGN.exportRep(data.reps[s])).join('\n');
+const backupText = () => JSON.stringify({ kind: 'chess-repertoire-backup', version: 1, saved: new Date().toISOString(), reps: data.reps });
 
 $('menu-btn').onclick = openSheet;
 $('sheet-close').onclick = closeSheet;
@@ -805,13 +832,177 @@ $('imp-go').onclick = doImport;
 $('imp-cancel').onclick = resetImport;
 $('toast-undo').onclick = undoImport;
 $('exp-side').onclick = () => deliver(PGN.exportRep(rep), `repertoire-${sideName(rep.side).toLowerCase()}-${today()}.pgn`);
-$('exp-all').onclick = () => deliver(backupText(), `chess-repertoire-backup-${today()}.pgn`);
+$('exp-all').onclick = () => deliver(backupText(), `chess-repertoire-backup-${today()}.json`);
 $('exp-copy').onclick = async () => {
   try { await navigator.clipboard.writeText(PGN.exportRep(rep)); toast(`${sideName(rep.side)} repertoire copied as PGN.`); }
   catch { toast('Copy failed — use Export instead.'); }
 };
 
+/* ---------- master copy sync ---------- */
+
+data.sync ||= { role: '', name: '', follow: '', applied: null, base: null, publishedAt: null, publishedSig: null };
+const TOKEN = 'chessrep.ghtoken';
+const getToken = () => { try { return localStorage.getItem(TOKEN) || ''; } catch { return ''; } };
+const when = iso => iso ? new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+const sig = c => String(G.fnv1a(JSON.stringify(c)));
+let latestMaster = null, lastCheck = 0;
+
+// What this device changed since the master it last applied. Before any master has been
+// applied, compare with the master itself and count only what this device has extra.
+function localChanges(m = latestMaster) {
+  const cur = S.content(data.reps);
+  if (data.sync.base) return S.diff(data.sync.base, cur);
+  return m ? { ...S.diff(m.reps, cur), removed: [] } : S.diff(null, cur);
+}
+
+function setStatus(id, text, kind = '') {
+  $(id).textContent = text;
+  $(id).className = 'hint' + (kind ? ' status-' + kind : '');
+}
+
+function renderSync() {
+  const sy = data.sync;
+  $('sync-role').value = sy.role;
+  $('sync-publish').hidden = sy.role !== 'publish';
+  $('sync-follow').hidden = sy.role !== 'follow';
+  if (document.activeElement !== $('sync-name')) $('sync-name').value = sy.name || '';
+  const hasToken = !!getToken();
+  $('sync-token-row').hidden = hasToken;
+  $('sync-token-ok').hidden = !hasToken;
+
+  if (sy.role === 'publish') {
+    const dirty = sy.publishedSig !== sig(S.content(data.reps));
+    setStatus('sync-pub-status', !sy.publishedAt ? 'Not published yet.'
+      : `Last published ${when(sy.publishedAt)} — ${dirty ? 'changes since then are not published yet.' : 'up to date.'}`, sy.publishedAt && !dirty ? 'ok' : '');
+  }
+  if (sy.role === 'follow') {
+    const n = S.changeCount(localChanges());
+    const who = $('sync-who').selectedOptions[0]?.textContent || sy.follow;
+    setStatus('sync-fol-status', !sy.follow ? 'Choose whose master to follow.'
+      : `${sy.applied ? `On ${who}'s master from ${when(sy.applied)}.` : `Not updated from ${who}'s master yet.`}` +
+        (n ? ` ${n} change${n === 1 ? '' : 's'} made on this device.` : ''));
+    $('sync-send').disabled = !n;
+  }
+}
+
+async function loadFollowList() {
+  if (data.sync.role !== 'follow') return;
+  const sel = $('sync-who');
+  try {
+    const list = await S.fetchIndex();
+    sel.innerHTML = '<option value="">Choose…</option>' + list.map(e => `<option value="${esc(e.slug)}">${esc(e.name)}</option>`).join('');
+    if (data.sync.follow && !list.some(e => e.slug === data.sync.follow)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(data.sync.follow)}">${esc(data.sync.follow)}</option>`);
+    sel.value = data.sync.follow || '';
+    if (!list.length) setStatus('sync-fol-status', 'Nobody has published a master yet.');
+    else renderSync();
+  } catch { setStatus('sync-fol-status', 'Could not reach GitHub — are you offline?', 'bad'); }
+}
+
+// Ask whether the followed master is newer than the one applied; show the banner if so.
+async function checkMaster(manual) {
+  const sy = data.sync;
+  if (sy.role !== 'follow' || !sy.follow) return;
+  lastCheck = Date.now();
+  if (manual) setStatus('sync-fol-status', 'Checking…');
+  let m;
+  try { m = await S.fetchMaster(sy.follow); }
+  catch { if (manual) setStatus('sync-fol-status', 'Could not reach GitHub — are you offline?', 'bad'); return; }
+  if (!m) { if (manual) setStatus('sync-fol-status', 'That master has not been published yet.'); return; }
+  latestMaster = m;
+  if (m.published === sy.applied) {
+    $('sync-banner').hidden = true;
+    if (manual) { renderSync(); toast('Already on the latest master.'); }
+    return;
+  }
+  const n = S.changeCount(localChanges());
+  $('sync-banner-text').textContent = `${m.name}'s master was updated ${when(m.published)}.` +
+    (n ? ` This device has ${n === 1 ? '1 change' : `${n} changes`} of its own — updating replaces ${n === 1 ? 'it' : 'them'}, so send ${n === 1 ? 'it' : 'them'} first if you want to keep ${n === 1 ? 'it' : 'them'}.` : '');
+  $('sb-send').hidden = !n;
+  $('sync-banner').hidden = false;
+  if (manual) { closeSheet(); renderSync(); }
+}
+
+function updateFromMaster() {
+  const m = latestMaster;
+  if (!m) return;
+  undoSnapshot = clone(data.reps);
+  undoSync = clone(data.sync);
+  data.reps = S.applyMaster(data.reps, m);
+  data.sync.applied = m.published;
+  data.sync.base = m.reps;
+  rep = data.reps[data.active];
+  line = []; cur = 0;
+  persist();
+  $('sync-banner').hidden = true;
+  render();
+  renderSync();
+  toast(`Updated to ${m.name}'s master.`, true);
+}
+
+function sendChanges() {
+  const d = localChanges();
+  const reps = S.changesReps(data.reps, d);
+  const games = ['w', 'b'].filter(s => Object.keys(reps[s].pos).length)
+    .map(s => PGN.exportRep(reps[s], { Event: `${sideName(s)} repertoire — changes` }));
+  if (!games.length) { toast(d.removed.length ? 'Only deletions here — redo those on the PC.' : 'No changes to send.'); return; }
+  deliver(games.join('\n'), `repertoire-changes-${today()}.pgn`);
+  if (d.removed.length) setTimeout(() => toast(`${d.removed.length} deletion${d.removed.length === 1 ? '' : 's'} can't travel in a PGN — repeat ${d.removed.length === 1 ? 'it' : 'them'} on the PC.`), 600);
+}
+
+async function publishMaster() {
+  const token = getToken();
+  if (!data.sync.name?.trim()) { setStatus('sync-pub-status', 'Enter your name first.', 'bad'); return; }
+  if (!token) { setStatus('sync-pub-status', 'Paste your GitHub token first.', 'bad'); return; }
+  $('sync-publish-go').disabled = true;
+  setStatus('sync-pub-status', 'Publishing…');
+  try {
+    const r = await S.publish(data.reps, data.sync.name, token);
+    data.sync.publishedAt = r.published;
+    data.sync.publishedSig = sig(r.content);
+    persist();
+    renderSync();
+    setStatus('sync-pub-status', `Published ${when(r.published)}. Devices following you will offer the update next time they open.`, 'ok');
+  } catch (e) {
+    setStatus('sync-pub-status', `Not published: ${e.message}.`, 'bad');
+  } finally {
+    $('sync-publish-go').disabled = false;
+  }
+}
+
+$('sync-role').onchange = e => {
+  data.sync.role = e.target.value;
+  persist();
+  renderSync();
+  loadFollowList();
+};
+$('sync-name').onchange = e => { data.sync.name = e.target.value.trim(); persist(); renderSync(); };
+$('sync-token').onchange = e => {
+  const t = e.target.value.trim();
+  e.target.value = '';
+  if (t) { try { localStorage.setItem(TOKEN, t); } catch {} }
+  renderSync();
+};
+$('sync-token-clear').onclick = () => { try { localStorage.removeItem(TOKEN); } catch {} renderSync(); };
+$('sync-publish-go').onclick = publishMaster;
+$('sync-who').onchange = e => {
+  data.sync.follow = e.target.value;
+  data.sync.applied = null;              // a different master: offer it fresh
+  persist();
+  renderSync();
+  checkMaster(true);
+};
+$('sync-check').onclick = () => checkMaster(true);
+$('sync-send').onclick = sendChanges;
+$('sb-update').onclick = updateFromMaster;
+$('sb-send').onclick = sendChanges;
+$('sb-later').onclick = () => { $('sync-banner').hidden = true; };
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - lastCheck > 5 * 60000) checkMaster(false);
+});
+
 render();
+renderSync();
+checkMaster(false);
 
 if ('serviceWorker' in navigator && location.hostname !== '127.0.0.1' && location.hostname !== 'localhost') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

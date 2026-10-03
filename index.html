@@ -22,12 +22,48 @@
     <button id="menu-btn" class="icon-btn build-only" title="Import / export" aria-label="Import and export">⋯</button>
   </header>
 
+  <div id="sync-banner" class="banner" hidden>
+    <p id="sync-banner-text"></p>
+    <div class="row">
+      <button id="sb-update" class="primary">Update</button>
+      <button id="sb-send" class="btn">Send my changes first</button>
+      <button id="sb-later" class="btn">Later</button>
+    </div>
+  </div>
+
   <div id="sheet" class="sheet-wrap" hidden>
     <div class="sheet" role="dialog" aria-label="Import and export">
       <div class="sheet-head">
-        <h2>PGN</h2>
+        <h2>Sync, import &amp; export</h2>
         <button id="sheet-close" class="icon-btn dark" aria-label="Close">✕</button>
       </div>
+
+      <section id="sync-sec">
+        <h3>Master copy</h3>
+        <p class="hint">Keep your master repertoire on one device (your PC) and push it to the others. Following devices keep their own training progress.</p>
+        <label class="field">This device
+          <select id="sync-role">
+            <option value="">Keeps its own repertoire</option>
+            <option value="publish">Publishes the master</option>
+            <option value="follow">Follows a master</option>
+          </select>
+        </label>
+        <div id="sync-publish" hidden>
+          <label class="field">Your name <input id="sync-name" type="text" autocomplete="off" placeholder="e.g. Tobias"></label>
+          <label class="field" id="sync-token-row">GitHub token <input id="sync-token" type="password" autocomplete="off" placeholder="paste once"></label>
+          <p id="sync-token-ok" class="hint" hidden>GitHub token saved on this device only. <button id="sync-token-clear" class="linkbtn">Remove it</button></p>
+          <div class="row"><button id="sync-publish-go" class="primary">Publish master</button></div>
+          <p id="sync-pub-status" class="hint"></p>
+        </div>
+        <div id="sync-follow" hidden>
+          <label class="field">Follow <select id="sync-who"><option value="">Choose…</option></select></label>
+          <div class="row">
+            <button id="sync-check" class="btn">Check for update</button>
+            <button id="sync-send" class="btn">Send my changes</button>
+          </div>
+          <p id="sync-fol-status" class="hint"></p>
+        </div>
+      </section>
 
       <section id="import-start">
         <h3>Import</h3>
@@ -68,7 +104,7 @@
 
       <section>
         <h3>Export</h3>
-        <p class="hint">A PGN of one repertoire, openable in Lichess, ChessBase and friends. The backup holds both and restores straight back into the right sides.</p>
+        <p class="hint">A PGN of one repertoire, openable in Lichess, ChessBase and friends. The full backup holds both repertoires, notes and training progress, and restores everything with Import.</p>
         <div class="row">
           <button id="exp-side" class="btn">Export <span id="exp-side-name">White</span></button>
           <button id="exp-all" class="btn">Back up everything</button>
