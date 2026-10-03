@@ -248,3 +248,9 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 .banner .row { margin-top: 8px; }
 .status-ok { color: var(--mine); }
 .status-bad { color: var(--danger); }
+
+/* ---- header stays on screen while scrolling ---- */
+.top { position: sticky; top: 0; z-index: 36; }
+.banner { top: var(--head-h, 54px); }
+.panel { scroll-margin-top: calc(var(--head-h, 54px) + 8px); }
+@media (min-width: 900px) { .board-col { top: calc(var(--head-h, 54px) + 12px); } }

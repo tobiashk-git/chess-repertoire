@@ -1000,6 +1000,10 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && Date.now() - lastCheck > 5 * 60000) checkMaster(false);
 });
 
+// The header is sticky; things that stick or scroll beneath it need its height.
+new ResizeObserver(([e]) => document.documentElement.style.setProperty('--head-h', `${e.target.offsetHeight}px`))
+  .observe(document.querySelector('.top'));
+
 render();
 renderSync();
 checkMaster(false);
