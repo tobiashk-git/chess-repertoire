@@ -61,9 +61,13 @@ function deleteMove(san) {
   const n = R.lineCounter(rep)(fen, san);
   const msg = n > 1 ? `Delete ${san} and the ${n} lines under it?` : `Delete ${san}?`;
   if (!confirm(msg)) return;
+  undoSnapshot = clone(data.reps);
+  undoSync = null;
+  undoKind = 'delete';
   R.removeMove(rep, R.keyOf(fen), san);
   persist();
   render();
+  toast(n > 1 ? `Deleted ${san} and the ${n} lines under it.` : `Deleted ${san}.`, true);
 }
 
 function makeMain(san) {
@@ -768,6 +772,7 @@ document.addEventListener('keydown', e => {
 let pending = null;        // parsed games awaiting the Import button
 let undoSnapshot = null;   // reps as they were before the last import / master update
 let undoSync = null;       // data.sync as it was, when the undo is for a master update
+let undoKind = null;       // 'import' | 'update' | 'delete' — what the Undo button reverses
 
 const clone = x => JSON.parse(JSON.stringify(x));
 const sideName = s => (s === 'w' ? 'White' : 'Black');
@@ -954,6 +959,7 @@ function doImport() {
   const { reps, total } = simulate();
   undoSnapshot = clone(data.reps);
   undoSync = null;
+  undoKind = 'import';
   data.reps = reps;
   if (pendingLink && !pendingBackup) rememberLink(pendingLink, $('imp-side').value);
   rep = data.reps[data.active];
@@ -966,14 +972,16 @@ function doImport() {
 
 function undoImport() {
   if (!undoSnapshot) return;
+  const kind = undoKind;
   data.reps = undoSnapshot;
   undoSnapshot = null;
+  undoKind = null;
   if (undoSync) { data.sync = undoSync; undoSync = null; renderSync(); }
   rep = data.reps[data.active];
-  line = []; cur = 0;
+  if (kind !== 'delete') { line = []; cur = 0; }   // after a delete the board stays where it was
   persist();
   render();
-  toast('Import undone.');
+  toast(kind === 'delete' ? 'Delete undone.' : kind === 'update' ? 'Update undone.' : 'Import undone.');
 }
 
 let toastTimer;
@@ -1110,6 +1118,7 @@ function updateFromMaster() {
   if (!m) return;
   undoSnapshot = clone(data.reps);
   undoSync = clone(data.sync);
+  undoKind = 'update';
   data.reps = S.applyMaster(data.reps, m);
   data.sync.applied = m.published;
   data.sync.base = m.reps;
