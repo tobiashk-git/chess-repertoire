@@ -775,8 +775,45 @@ const sideName = s => (s === 'w' ? 'White' : 'Black');
 function openSheet() { resetImport(); renderSync(); loadFollowList(); $('toast').hidden = true; $('sheet').hidden = false; }
 function closeSheet() { $('sheet').hidden = true; resetImport(); }
 
+function rememberLink(link, side) {
+  const games = pending || [];
+  const name = games.find(g => g.headers.StudyName)?.headers.StudyName
+    || (games[0] ? `${games[0].headers.White || '?'} – ${games[0].headers.Black || '?'}` : link.url);
+  const chapter = link.kind === 'chapter' ? games[0]?.headers.ChapterName : '';
+  data.links = (data.links || []).filter(l => l.url !== link.url);
+  data.links.unshift({ url: link.url, kind: link.kind, name: chapter ? `${name}: ${chapter}` : name, side, imported: new Date().toISOString() });
+  data.links = data.links.slice(0, 12);
+}
+
+function renderLinks() {
+  const links = data.links || [];
+  $('links').hidden = !links.length;
+  $('links-list').innerHTML = links.map((l, i) => `
+    <li><span>${esc(l.name)}<small>${l.kind} · ${sideName(l.side)} · imported ${when(l.imported)}</small></span>
+      <button class="linkbtn" data-reimport="${i}">Re-import</button>
+      <button class="linkbtn" data-forget="${i}" aria-label="Forget">✕</button></li>`).join('');
+}
+
+$('links-list').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const links = data.links || [];
+  if (b.dataset.reimport) { const l = links[+b.dataset.reimport]; importFromLink(l.url, l.side); }
+  if (b.dataset.forget) { links.splice(+b.dataset.forget, 1); persist(); renderLinks(); }
+});
+
+$('clip-go').onclick = async () => {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); }
+  catch { toast('Could not read the clipboard — use "Type or paste" instead.'); return; }
+  if (!text.trim()) { toast('The clipboard is empty.'); return; }
+  readPgn(text);
+};
+
 function resetImport() {
   pending = null;
+  pendingLink = null;
+  renderLinks();
   $('import-start').hidden = false;
   $('import-review').hidden = true;
   $('paste-box').hidden = true;
@@ -788,9 +825,48 @@ function resetImport() {
 const isBackup = games => games.every(g => g.headers.Repertoire === 'w' || g.headers.Repertoire === 'b');
 
 let pendingBackup = null;  // a full JSON backup awaiting Restore
+let pendingLink = null;    // the Lichess link a pending import was fetched from
 
-function readPgn(text) {
+/* Lichess links the app can fetch directly (their PGN exports are open to other sites).
+   -> { api, kind } or null */
+function lichessLink(text) {
+  const m = text.trim().match(/^(?:https?:\/\/)?(?:www\.)?lichess\.org\/(.+)$/i);
+  if (!m) return null;
+  const path = m[1].split(/[?#]/)[0].replace(/\/+$/, '');
+  let x;
+  if ((x = path.match(/^study\/([A-Za-z0-9]{8})\/([A-Za-z0-9]{8})$/))) return { kind: 'chapter', api: `https://lichess.org/api/study/${x[1]}/${x[2]}.pgn?clocks=false&orientation=true` };
+  if ((x = path.match(/^study\/([A-Za-z0-9]{8})$/))) return { kind: 'study', api: `https://lichess.org/api/study/${x[1]}.pgn?clocks=false&orientation=true` };
+  if ((x = path.match(/^(?:game\/export\/)?([A-Za-z0-9]{8})(?:[A-Za-z0-9]{4})?(?:\/(?:white|black))?$/))) return { kind: 'game', api: `https://lichess.org/game/export/${x[1]}?clocks=false&evals=false` };
+  return null;
+}
+
+async function importFromLink(url, side = null) {
+  const link = lichessLink(url);
+  if (!link) { toast('That is not a Lichess study, chapter or game link.'); return; }
+  $('import-start').hidden = true;
+  $('import-review').hidden = false;
+  $('imp-summary').textContent = 'Fetching from Lichess…';
+  $('imp-options').hidden = true;
+  $('imp-preview').textContent = '';
+  $('imp-go').disabled = true;
+  let text;
+  try {
+    const r = await fetch(link.api, { headers: { Accept: 'application/x-chess-pgn' }, cache: 'no-store' });
+    if (r.status === 404 || r.status === 403) throw new Error(link.kind === 'game' ? 'Lichess could not find that game.' : 'Lichess could not find that study — is it set to Public or Unlisted?');
+    if (!r.ok) throw new Error(`Lichess said ${r.status}.`);
+    text = await r.text();
+  } catch (e) {
+    resetImport();
+    toast(e.message.startsWith('Lichess') ? e.message : 'Could not reach Lichess — are you offline?');
+    return;
+  }
+  readPgn(text, { url: url.trim(), kind: link.kind, side });
+}
+
+function readPgn(text, link = null) {
   pendingBackup = null;
+  pendingLink = link;
+  if (!link && lichessLink(text)) { importFromLink(text); return; }
   if (text.trim().startsWith('{')) {
     let b = null;
     try { b = JSON.parse(text); } catch {}
@@ -816,11 +892,30 @@ function readPgn(text) {
     ? `Repertoire backup: ${[...new Set(games.map(g => sideName(g.headers.Repertoire)))].join(' + ')}.`
     : `${games.length} game${games.length === 1 ? '' : 's'}${names.length ? ' — ' + names.join(', ') : ''}.`;
   $('imp-options').hidden = backup;
-  $('imp-side').value = data.active;
-  $('imp-depth').value = games.length > 1 && !games.some(g => hasVariations(g.root)) ? '24' : '0';
+  $('imp-side').value = guessSide(games, link);
+  $('imp-depth').value = link?.kind === 'game' ? '24' : link ? '0' : games.length > 1 && !games.some(g => hasVariations(g.root)) ? '24' : '0';
+  if (link) {
+    const study = games.find(g => g.headers.StudyName)?.headers.StudyName;
+    $('imp-summary').textContent = `From Lichess: ${study || games[0].headers.Event || 'game'}` +
+      (link.kind === 'study' ? ` (${games.length} chapter${games.length === 1 ? '' : 's'})` : '') + '.';
+  }
   $('import-start').hidden = true;
   $('import-review').hidden = false;
   updatePreview();
+}
+
+/* Which repertoire an import belongs in: where this link went last time; else a Lichess chapter
+   flipped to Black's side (the export says [Orientation "black"]); else the repertoire that
+   already shares the most of these moves; else the one on screen. */
+function guessSide(games, link) {
+  if (link?.side) return link.side;
+  const orient = games.map(g => g.headers.Orientation).filter(Boolean);
+  if (orient.length && orient.every(o => o === 'black')) return 'b';
+  if (orient.length && orient.some(o => o === 'black')) return data.active;   // mixed study: let the user pick
+  const overlap = side => { const r = PGN.importGames(clone(data.reps[side]), games); return r.moves - r.added; };
+  const w = overlap('w'), b = overlap('b');
+  if (w !== b) return w > b ? 'w' : 'b';
+  return orient.length ? 'w' : data.active;
 }
 
 function hasVariations(node) {
@@ -860,6 +955,7 @@ function doImport() {
   undoSnapshot = clone(data.reps);
   undoSync = null;
   data.reps = reps;
+  if (pendingLink && !pendingBackup) rememberLink(pendingLink, $('imp-side').value);
   rep = data.reps[data.active];
   line = []; cur = 0;
   persist();

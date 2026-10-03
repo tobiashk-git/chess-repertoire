@@ -67,14 +67,19 @@
 
       <section id="import-start">
         <h3>Import</h3>
-        <p class="hint">Merge a PGN file into a repertoire: variations, comments (as notes) and every game in the file. Nothing already there is removed.</p>
+        <p class="hint">Merge a PGN file, pasted PGN or a Lichess study / chapter / game link into a repertoire: variations, comments (as notes) and every game. Nothing already there is removed.</p>
         <div class="row">
+          <button id="clip-go" class="primary">Paste from clipboard</button>
           <label class="btn">Choose file…<input id="pgn-file" type="file" hidden></label>
-          <button id="paste-toggle" class="btn">Paste PGN</button>
+          <button id="paste-toggle" class="btn">Type or paste</button>
         </div>
         <div id="paste-box" hidden>
-          <textarea id="pgn-text" rows="6" placeholder="1. e4 e5 2. Nf3 (2. Bc4) Nc6 …"></textarea>
-          <button id="paste-go" class="btn">Read PGN</button>
+          <textarea id="pgn-text" rows="6" placeholder="PGN, or a Lichess link such as https://lichess.org/study/…"></textarea>
+          <button id="paste-go" class="btn">Read</button>
+        </div>
+        <div id="links" class="links" hidden>
+          <h4>Your Lichess links</h4>
+          <ul id="links-list"></ul>
         </div>
       </section>
 

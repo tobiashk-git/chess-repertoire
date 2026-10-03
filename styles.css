@@ -272,3 +272,12 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 /* ---- note from the end of a training line ---- */
 .t-end:not(:has(button:not([hidden]))) { display: none; }
 .t-note-edit { margin-top: 10px; }
+
+/* ---- remembered Lichess links ---- */
+.links { margin-top: 12px; }
+.links h4 { margin: 0 0 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.links ul { list-style: none; margin: 0; padding: 0; }
+.links li { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding: 6px 0; }
+.links li span { flex: 1; min-width: 0; font-size: 14px; }
+.links li small { display: block; color: var(--muted); font-size: 12px; }
+.links li .linkbtn { font-size: 13px; }

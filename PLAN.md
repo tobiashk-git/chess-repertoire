@@ -17,6 +17,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | — | Opening names (ECO) on the line table, "Jump to opening" selector | 2026-10-03 |
 | — | Training chooser: All lines / From here × Review due, Practise (ignores schedule), Real game (master-weighted replies, first move included) | 2026-10-03 |
 | — | Training end-of-line: stays on the final position (opening name + note) until Next; Note this position button | 2026-10-03 |
+| — | Import from Lichess link (study / chapter / game, side from the chapter's orientation, remembered links with Re-import) + Paste from clipboard | 2026-10-03 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now
@@ -26,7 +27,7 @@ Collect anything fiddly or wrong here and fix it first:
 
 - …
 
-**Up next (user setting up a Lichess account, 2026-10-03):** workflow = build in Lichess
+**Lichess workflow (set up 2026-10-03, import shipped same day):** workflow = build in Lichess
 studies on the PC → import into the app on the PC → Publish → phone trains on the go.
 
 - **Import from link** (PC first): paste a Lichess study, chapter or game link; the app fetches
