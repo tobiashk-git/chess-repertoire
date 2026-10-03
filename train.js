@@ -16,7 +16,7 @@
 
 import { Chess, DEFAULT_POSITION } from './vendor/chess.js';
 import * as R from './repertoire.js';
-import { gamesAt, nextMoves } from './games.js';
+import { gamesAt, nextMoves, meta } from './games.js';
 
 const DAY = 86400000;
 
@@ -197,8 +197,10 @@ export class Session {
   async pickReply(fen, ply, ms) {
     let w = ms.map(() => 1);
     try {
-      const { games } = await gamesAt(fen, ply);
-      const counts = new Map(nextMoves(games).map(x => [x.san, x.n]));
+      // the start position isn't in the games index; its counts come with the collection's meta
+      const counts = ply === 0
+        ? new Map(Object.entries((await meta()).firstMoves || {}))
+        : new Map(nextMoves((await gamesAt(fen, ply)).games).map(x => [x.san, x.n]));
       if (counts.size) w = ms.map(m => (counts.get(m.san) || 0) + 0.5);   // rare replies still turn up now and then
     } catch {}
     let r = Math.random() * w.reduce((a, b) => a + b, 0);

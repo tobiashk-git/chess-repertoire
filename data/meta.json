@@ -3,6 +3,21 @@
  "positions": 356959,
  "perShard": 100,
  "maxPly": 30,
+ "firstMoves": {
+  "e4": 11295,
+  "d4": 8456,
+  "c4": 2029,
+  "Nf3": 1956,
+  "g3": 71,
+  "f4": 66,
+  "b3": 46,
+  "e3": 27,
+  "a3": 9,
+  "b4": 9,
+  "Nc3": 7,
+  "c3": 2,
+  "d3": 2
+ },
  "players": [
   "Morphy",
   "Anderssen",
@@ -53,6 +68,6 @@
   "Firouzja",
   "Gukesh"
  ],
- "built": "2026-09-28",
+ "built": "2026-10-03",
  "source": "PGN Mentor (pgnmentor.com)"
 }

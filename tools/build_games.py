@@ -193,7 +193,13 @@ def main():
         with open(os.path.join(OUT, 'g', f'{i // GAMES_PER_SHARD}.json'), 'w', encoding='utf-8') as f:
             json.dump(rows[i:i + GAMES_PER_SHARD], f, separators=(',', ':'), ensure_ascii=False)
 
+    # The start position isn't in the index (every game reaches it), so its move counts are
+    # kept here: real-game training uses them to pick the opponent's first move.
+    first = defaultdict(int)
+    for g in games:
+        first[g['sans'][0]] += 1
     meta = {'games': len(rows), 'positions': len(index), 'perShard': GAMES_PER_SHARD, 'maxPly': MAX_PLY,
+            'firstMoves': dict(sorted(first.items(), key=lambda kv: -kv[1])),
             'players': PLAYERS, 'built': time.strftime('%Y-%m-%d'), 'source': 'PGN Mentor (pgnmentor.com)'}
     with open(os.path.join(OUT, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=1)

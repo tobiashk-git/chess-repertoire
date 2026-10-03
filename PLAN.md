@@ -15,7 +15,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | 3 | Spaced-repetition training (line-based sessions, Train / From here) | 2026-09-28 |
 | 4 | Study panel: ~24k bundled master games by position + Wikibooks theory, game viewer | 2026-09-28 |
 | — | Opening names (ECO) on the line table, "Jump to opening" selector | 2026-10-03 |
-| — | Training chooser: All lines / From here × Review due, Practise (ignores schedule), Real game (master-weighted replies) | 2026-10-03 |
+| — | Training chooser: All lines / From here × Review due, Practise (ignores schedule), Real game (master-weighted replies, first move included) | 2026-10-03 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now
@@ -62,7 +62,6 @@ can publish without GitHub; the master file format carries straight over.
 
 - Whole master-games collection available offline (today: cached as positions are viewed)
 - Daily review reminder / streak
-- Real game: weight the opponent's very first move too (the start position isn't in the games index, so 1.e4 vs 1.d4 is 50/50 today)
 - Optional: training progress following you across devices (needs two-way sync)
 
 ## Notes for development
