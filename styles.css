@@ -254,3 +254,17 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 .banner { top: var(--head-h, 54px); }
 .panel { scroll-margin-top: calc(var(--head-h, 54px) + 8px); }
 @media (min-width: 900px) { .board-col { top: calc(var(--head-h, 54px) + 12px); } }
+
+/* ---- training chooser ---- */
+.train-start { margin-top: 12px; }
+@media (min-width: 900px) { .train-start { margin-top: 0; } }
+.ts-scope { display: inline-flex; }
+.ts-scope button:disabled { opacity: 0.4; }
+.ts-name { margin: 6px 0 10px; }
+.ts-modes { display: grid; gap: 8px; }
+.ts-mode { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; border: 1px solid var(--line); background: #fbfaf7; border-radius: 12px; padding: 10px 12px; }
+.ts-mode b { font-size: 16px; }
+.ts-mode span { font-size: 13px; color: var(--muted); }
+.ts-mode:not(:disabled):active { background: var(--line); }
+.ts-mode:disabled { opacity: 0.45; }
+.ts-rule { margin: 10px 0 0; font-size: 12px; }

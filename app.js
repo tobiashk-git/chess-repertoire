@@ -387,14 +387,55 @@ function renderDue(inRep) {
   $('due-sub').textContent = !s.total ? 'Save some lines first'
     : s.due ? (s.fresh ? `${s.fresh} new` : `of ${s.total} positions`)
     : s.next ? `Next review in ${ago(s.next - Date.now())}` : '';
-  $('train-go').disabled = !s.due;
-  $('train-here').hidden = !(cur > 0 && inRep && s.due);
+  $('train-go').disabled = !s.total;
+  trainInRep = inRep;
+  if (!$('train-start').hidden) renderTrainStart();
 }
 
-function startTraining(fromHere) {
-  const opts = fromHere ? { prefixKey: R.keyOf(fenAt(cur)), prefixLen: cur } : {};
-  const s = new T.Session(rep, { ...opts, ui: { show: showTrain }, save: persist });
-  if (!s.dueCount()) { toast(fromHere ? 'Nothing due in the lines from here.' : 'Nothing due — all caught up.'); return; }
+/* Training chooser: scope (all lines / from the board position) and mode. */
+let tsScope = 'all', trainInRep = false;
+const hereOK = () => cur > 0 && trainInRep;
+const scopeOpts = () => (tsScope === 'here' && hereOK() ? { prefixKey: R.keyOf(fenAt(cur)), prefixLen: cur } : {});
+const newSession = mode => new T.Session(rep, { ...scopeOpts(), mode, ui: { show: showTrain }, save: persist });
+
+function renderTrainStart() {
+  if (!hereOK()) tsScope = 'all';
+  for (const b of $('ts-scope').children) {
+    b.classList.toggle('on', b.dataset.scope === tsScope);
+    b.disabled = b.dataset.scope === 'here' && !hereOK();
+  }
+  const moves = line.slice(0, cur).map((m, i) => (i % 2 ? '' : `${i / 2 + 1}.`) + m.san).join(' ');
+  const here = O.nameOf(line.slice(0, cur).map(m => R.keyOf(m.fen)));
+  const probe = newSession('practice');
+  const n = probe.lines.length, due = probe.dueCount();
+  $('ts-scope-name').textContent = tsScope === 'here'
+    ? `Lines from ${moves}${here ? ` — ${here.name}` : ''}`
+    : hereOK() ? `Every line of your ${sideName(rep.side)} repertoire. "From here" uses the position on the board.`
+      : `Every line of your ${sideName(rep.side)} repertoire. To train one opening, go to it on the board (e.g. Jump to opening) first.`;
+  $('ts-due').textContent = due ? `${due} position${due === 1 ? '' : 's'} due — spaced repetition` : 'Nothing due here — all caught up';
+  $('ts-practice').textContent = `All ${n} line${n === 1 ? '' : 's'} once, in random order — ignores the schedule`;
+  $('ts-game').textContent = '10 games — the opponent plays your prepared replies as often as masters do';
+  document.querySelector('.ts-mode[data-mode="due"]').disabled = !due;
+  document.querySelector('.ts-mode[data-mode="practice"]').disabled = !n;
+  document.querySelector('.ts-mode[data-mode="game"]').disabled = !n;
+}
+
+function openTrainStart() {
+  tsScope = hereOK() ? 'here' : 'all';
+  $('train-start').hidden = false;
+  document.querySelector('.train-bar').hidden = true;
+  renderTrainStart();
+}
+
+function closeTrainStart() {
+  $('train-start').hidden = true;
+  document.querySelector('.train-bar').hidden = false;
+}
+
+function startTraining(mode) {
+  const s = newSession(mode);
+  if (!s.available()) { toast('Nothing to train there.'); return; }
+  closeTrainStart();
   session = s;
   document.body.classList.add('training');
   board.setOrientation(rep.side);
@@ -418,18 +459,24 @@ function showTrain(st) {
   board.set(chess, { lastMove: st.lastMove, arrows });
   mini.set(chess, { lastMove: st.lastMove, arrows });
 
-  const { tested, firstTry, lines } = st.stats;
-  $('t-progress').textContent = st.phase === 'done' ? `${lines} line${lines === 1 ? '' : 's'} played`
-    : `${st.due} due · ${firstTry}/${tested} first try`;
+  const { tested, firstTry, lines, total } = st.stats;
+  const unit = st.mode === 'game' ? 'Game' : 'Line';
+  $('t-progress').textContent = st.phase === 'done' ? `${lines} ${unit.toLowerCase()}${lines === 1 ? '' : 's'} played`
+    : st.mode === 'due' ? `${st.due} due · ${firstTry}/${tested} first try`
+    : `${unit} ${Math.min(lines + 1, total)} of ${total} · ${firstTry}/${tested} first try`;
   $('t-prompt').textContent = {
-    yourMove: 'Your move', opponent: 'Opponent to move…', lineDone: 'Line complete ✓', done: 'Session complete',
+    yourMove: 'Your move', opponent: 'Opponent to move…',
+    lineDone: st.mode === 'game' ? 'End of your preparation ✓' : 'Line complete ✓', done: 'Session complete',
   }[st.phase];
 
   const fb = $('t-feedback');
   if (st.phase === 'done') {
     const pct = tested ? Math.round(firstTry / tested * 100) : 100;
     fb.className = 't-feedback ok';
-    fb.textContent = tested ? `${firstTry} of ${tested} found first time (${pct}%). Misses came back until you got them, and will come round sooner.` : 'Nothing left to review.';
+    fb.textContent = !tested ? 'Nothing left to review.'
+      : `${firstTry} of ${tested} found first time (${pct}%). ` + (st.mode === 'due'
+        ? 'Misses came back until you got them, and will come round sooner.'
+        : 'Your review schedule only changed for the misses — they will come round sooner.');
   } else {
     fb.className = 't-feedback' + (st.feedback ? (st.feedback.alt ? ' alt' : st.feedback.ok ? ' ok' : ' bad') : '');
     fb.textContent = st.feedback?.text || (st.phase === 'yourMove' ? 'What do you play here?' : '');
@@ -439,8 +486,10 @@ function showTrain(st) {
   $('t-stop').textContent = st.phase === 'done' ? 'Back to builder' : 'Stop';
 }
 
-$('train-go').onclick = () => startTraining(false);
-$('train-here').onclick = () => startTraining(true);
+$('train-go').onclick = openTrainStart;
+$('ts-close').onclick = closeTrainStart;
+for (const b of $('ts-scope').children) b.onclick = () => { tsScope = b.dataset.scope; renderTrainStart(); };
+for (const b of document.querySelectorAll('.ts-mode')) b.onclick = () => startTraining(b.dataset.mode);
 $('t-stop').onclick = stopTraining;
 $('t-hint').onclick = () => session?.hint();
 

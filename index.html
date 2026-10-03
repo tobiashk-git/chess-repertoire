@@ -134,8 +134,25 @@
           <b id="due-count"></b>
           <span id="due-sub" class="hint"></span>
         </div>
-        <button id="train-here" class="btn">From here</button>
         <button id="train-go" class="primary">Train</button>
+      </div>
+
+      <div class="panel train-start build-only" id="train-start" hidden>
+        <div class="panel-head">
+          <h2>Train</h2>
+          <button id="ts-close" class="icon-btn dark" aria-label="Close">✕</button>
+        </div>
+        <div class="mini-seg ts-scope" id="ts-scope">
+          <button data-scope="all">All lines</button>
+          <button data-scope="here">From here</button>
+        </div>
+        <p id="ts-scope-name" class="hint ts-name"></p>
+        <div class="ts-modes">
+          <button class="ts-mode" data-mode="due"><b>Review due</b><span id="ts-due"></span></button>
+          <button class="ts-mode" data-mode="practice"><b>Practise</b><span id="ts-practice"></span></button>
+          <button class="ts-mode" data-mode="game"><b>Real game</b><span id="ts-game"></span></button>
+        </div>
+        <p class="hint ts-rule">Practise and Real game never push reviews later; a miss still brings that position back sooner.</p>
       </div>
 
       <div class="panel train-panel train-only">
