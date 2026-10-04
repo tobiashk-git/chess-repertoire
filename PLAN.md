@@ -24,6 +24,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | — | Model games: ★ flag master games or pasted PGN games as a line's inspiration (+ why-note); ★ Models study tab, stars on line-table columns, listed at the end of a training line; published with the master | 2026-10-04 |
 | — | Engine line check: your moves graded Best / Solid / Playable / Risky / Mistake by loss vs Stockfish's best (depth 16, level positions get extra room), tagged ★ Surprise weapon (<5% of master games) or Sideline (5–15%); underlines in the line table; results kept per device | 2026-10-04 |
 | B | Family: Copy from someone's master (all or one opening, with notes + model games, preview + undo); follow list shows publish dates; FAMILY.md setup guide (GitHub account → collaborator → classic `public_repo` token → publish; fine-grained tokens can't write to a repo you only collaborate on) | 2026-10-04 |
+| — | Suggested starter repertoires: 9 classic starters by style (6–8 moves, one move of yours per position, plan notes, validated with python-chess), from the menu panel and the empty Lines table | 2026-10-04 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now

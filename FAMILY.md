@@ -20,15 +20,19 @@ App: **https://tobiashk-git.github.io/chess-repertoire/**
 1. **Install the app.** Open the app link in **Edge** or **Chrome**, click the install icon at
    the right end of the address bar, then **Install**. Always use this same browser on your PC:
    your repertoire is saved in it.
-2. **Get a head start (optional).** **⋯ (top right) → Copy from someone's repertoire**: pick a
-   person, White or Black, and **Everything** or one opening → **Preview copy** → **Import**.
-   You get their moves, notes and model games; after that it's yours to change.
-3. **Build and train.**
+2. **Build and train.** You start with an empty board: your repertoire is yours to shape.
    - **White / Black** at the top switches between your two repertoires.
    - Play moves on the board, then **Save line**. For another variation, go back to where it
      branches and play a different move.
    - **Train** → **Review due** (what needs practice today), **Practise** (every line, any
      time) or **Real game** (replies as often as masters play them).
+3. **Not sure where to begin? (optional)** **⋯ (top right) → Start from a suggested
+   repertoire**: White — 1.e4 Attacking (King's Gambit, Smith-Morra…), 1.e4 Classical
+   (Italian Game…), 1.d4 London System, 1.d4 Queen's Gambit; Black — Caro-Kann, 1…e5 or
+   Sicilian Najdorf against 1.e4, Queen's Gambit Declined or King's Indian against 1.d4.
+   Each is only 6–8 moves deep, covers the main replies and has short notes on the plans.
+   Already like someone's openings? **⋯ → Copy from someone's repertoire** copies one of
+   their openings, or all of them.
 
 ## Part 2 · Also train on your phone — optional, about 10 minutes once
 
