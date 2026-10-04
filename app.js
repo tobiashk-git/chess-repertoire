@@ -17,9 +17,10 @@ import * as S from './sync.js';
 import * as E from './engine.js';
 import * as MD from './models.js';
 import * as C from './check.js';
+import { STARTERS, pgnOf as starterPgn } from './starters.js';
 
 const $ = id => document.getElementById(id);
-const APP_VERSION = 23;   // bump together with the service worker cache name on every release
+const APP_VERSION = 24;   // bump together with the service worker cache name on every release
 const MINE = '#15803d', THEIRS = '#2563eb';
 
 const data = R.load();
@@ -231,7 +232,9 @@ function renderLines(key) {
   tableCols = shown;
   const wrap = $('lines');
   if (!shown.length) {
-    wrap.innerHTML = `<p class="lines-empty">${all.length ? 'No saved lines pass through this position.' : 'Lines appear here as you save them.'}</p>`;
+    wrap.innerHTML = all.length ? '<p class="lines-empty">No saved lines pass through this position.</p>'
+      : '<p class="lines-empty">Lines appear here as you save them. Not sure where to begin? <button class="linkbtn" id="starter-open">Start from a suggested repertoire</button></p>';
+    $('starter-open')?.addEventListener('click', () => openStarters(rep.side));
     $('lines-foot').textContent = '';
     return;
   }
@@ -1011,6 +1014,7 @@ const clone = x => JSON.parse(JSON.stringify(x));
 const sideName = s => (s === 'w' ? 'White' : 'Black');
 
 function openSheet() {
+  fillStarters();
   loadCopyList();
   $('app-version').textContent = APP_VERSION; resetImport(); renderSync(); loadFollowList(); $('toast').hidden = true; $('sheet').hidden = false; }
 function closeSheet() { $('sheet').hidden = true; resetImport(); }
@@ -1053,6 +1057,7 @@ $('clip-go').onclick = async () => {
 function resetImport() {
   pending = null;
   pendingCopy = null;
+  pendingStarter = null;
   pendingLink = null;
   renderLinks();
   $('import-start').hidden = false;
@@ -1134,6 +1139,36 @@ function previewCopy() {
   $('imp-summary').textContent = `Copy from ${master.name}: ${fam === '*' ? 'everything' : fam} (${sideName(side)})` +
     (models.length ? ` · ${models.length} model game${models.length === 1 ? '' : 's'}` : '') + '.';
 }
+
+/* ---------- suggested starter repertoires ---------- */
+
+let pendingStarter = null;
+
+function fillStarters(side = data.active) {
+  const sel = $('starter-pick');
+  if (!sel.options.length) {
+    sel.innerHTML = ['w', 'b'].map(sd => `<optgroup label="${sideName(sd)}">` +
+      STARTERS.filter(s => s.side === sd).map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('') + '</optgroup>').join('');
+  }
+  if (side && STARTERS.find(s => s.id === sel.value)?.side !== side) sel.value = STARTERS.find(s => s.side === side).id;
+  $('starter-blurb').textContent = STARTERS.find(s => s.id === sel.value)?.blurb || '';
+}
+
+function openStarters(side) {
+  openSheet();
+  fillStarters(side);
+  $('starter-sec').scrollIntoView({ block: 'start' });
+}
+
+$('starter-pick').onchange = () => fillStarters(null);
+$('starter-go').onclick = () => {
+  const s = STARTERS.find(x => x.id === $('starter-pick').value);
+  if (!s) return;
+  readPgn(starterPgn(s));
+  pendingStarter = s;
+  $('imp-summary').textContent = `Suggested repertoire: ${s.name} (${sideName(s.side)}). It is added to your ${sideName(s.side)} repertoire; nothing of yours is removed.`;
+  $('sheet').scrollTo({ top: 0 });
+};
 
 $('copy-who').onchange = fillCopyWhat;
 $('copy-side').onchange = fillCopyWhat;
@@ -1266,6 +1301,7 @@ function updatePreview() {
 function doImport() {
   const { reps, total } = simulate();
   const copy = pendingCopy;              // closing the sheet clears it
+  const starter = pendingStarter;
   undoSnapshot = clone(data.reps);
   undoSync = null;
   undoKind = 'import';
@@ -1281,6 +1317,7 @@ function doImport() {
   closeSheet();
   render();
   toast(pendingBackup ? 'Backup restored.'
+    : starter ? `Added the ${starter.name} starter: ${total.added} new move${total.added === 1 ? '' : 's'}.`
     : copy ? `Copied ${total.added} new move${total.added === 1 ? '' : 's'}${copiedModels ? ` and ${copiedModels} model game${copiedModels === 1 ? '' : 's'}` : ''} from ${copy.name}.`
     : `Imported ${total.added} new move${total.added === 1 ? '' : 's'}.`, true);
 }
