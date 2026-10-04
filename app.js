@@ -19,6 +19,7 @@ import * as MD from './models.js';
 import * as C from './check.js';
 
 const $ = id => document.getElementById(id);
+const APP_VERSION = 22;   // bump together with the service worker cache name on every release
 const MINE = '#15803d', THEIRS = '#2563eb';
 
 const data = R.load();
@@ -1009,7 +1010,8 @@ let undoKind = null;       // 'import' | 'update' | 'delete' — what the Undo b
 const clone = x => JSON.parse(JSON.stringify(x));
 const sideName = s => (s === 'w' ? 'White' : 'Black');
 
-function openSheet() { resetImport(); renderSync(); loadFollowList(); $('toast').hidden = true; $('sheet').hidden = false; }
+function openSheet() {
+  $('app-version').textContent = APP_VERSION; resetImport(); renderSync(); loadFollowList(); $('toast').hidden = true; $('sheet').hidden = false; }
 function closeSheet() { $('sheet').hidden = true; resetImport(); }
 
 function rememberLink(link, side) {
