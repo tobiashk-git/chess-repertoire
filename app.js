@@ -19,7 +19,7 @@ import * as MD from './models.js';
 import * as C from './check.js';
 
 const $ = id => document.getElementById(id);
-const APP_VERSION = 22;   // bump together with the service worker cache name on every release
+const APP_VERSION = 23;   // bump together with the service worker cache name on every release
 const MINE = '#15803d', THEIRS = '#2563eb';
 
 const data = R.load();
@@ -1011,6 +1011,7 @@ const clone = x => JSON.parse(JSON.stringify(x));
 const sideName = s => (s === 'w' ? 'White' : 'Black');
 
 function openSheet() {
+  loadCopyList();
   $('app-version').textContent = APP_VERSION; resetImport(); renderSync(); loadFollowList(); $('toast').hidden = true; $('sheet').hidden = false; }
 function closeSheet() { $('sheet').hidden = true; resetImport(); }
 
@@ -1051,6 +1052,7 @@ $('clip-go').onclick = async () => {
 
 function resetImport() {
   pending = null;
+  pendingCopy = null;
   pendingLink = null;
   renderLinks();
   $('import-start').hidden = false;
@@ -1064,6 +1066,78 @@ function resetImport() {
 const isBackup = games => games.every(g => g.headers.Repertoire === 'w' || g.headers.Repertoire === 'b');
 
 let pendingBackup = null;  // a full JSON backup awaiting Restore
+let pendingCopy = null;    // { name, side, models } while a "Copy from…" import is in preview
+
+/* ---------- copy from someone's master ---------- */
+
+const copyCache = new Map();   // slug -> master
+
+async function loadCopyList() {
+  const sel = $('copy-who');
+  try {
+    const list = await S.fetchIndex();
+    const keep = sel.value;
+    sel.innerHTML = '<option value="">Choose…</option>' + list.map(e => `<option value="${esc(e.slug)}">${esc(e.name)}</option>`).join('');
+    sel.value = list.some(e => e.slug === keep) ? keep : '';
+    $('copy-status').textContent = list.length ? '' : 'Nobody has published a master yet.';
+  } catch { $('copy-status').textContent = 'Could not reach GitHub — are you offline?'; }
+}
+
+// The lines of a master repertoire, each with its opening name
+function masterLines(mrep) {
+  return R.enumerateLines(mrep, 2000).map(moves => ({ moves, name: O.nameOf(moves.map(m => m.key)) }));
+}
+
+async function fillCopyWhat() {
+  const slug = $('copy-who').value, side = $('copy-side').value;
+  const what = $('copy-what');
+  what.disabled = true; $('copy-go').disabled = true;
+  what.innerHTML = '<option value="">—</option>';
+  if (!slug) return;
+  $('copy-status').textContent = 'Loading…';
+  try {
+    if (!copyCache.has(slug)) copyCache.set(slug, await S.fetchMaster(slug));
+  } catch { $('copy-status').textContent = 'Could not reach GitHub — are you offline?'; return; }
+  await O.load().catch(() => {});        // opening names group the lines
+  const master = copyCache.get(slug);
+  const lines = master ? masterLines(master.reps[side]) : [];
+  if (!lines.length) { $('copy-status').textContent = `${master?.name || 'They'} have no ${sideName(side)} repertoire published.`; return; }
+  const fams = new Map();
+  for (const l of lines) { const f = l.name?.family || 'Unnamed'; fams.set(f, (fams.get(f) || 0) + 1); }
+  what.innerHTML = `<option value="*">Everything (${lines.length} line${lines.length === 1 ? '' : 's'})</option>` +
+    [...fams].sort((a, b) => a[0].localeCompare(b[0])).map(([f, n]) => `<option value="${esc(f)}">${esc(f)} (${n})</option>`).join('');
+  what.disabled = false; $('copy-go').disabled = false;
+  $('copy-status').textContent = `${master.name}'s master, published ${when(master.published)}.`;
+}
+
+function previewCopy() {
+  const slug = $('copy-who').value, side = $('copy-side').value, fam = $('copy-what').value;
+  const master = copyCache.get(slug);
+  if (!master) return;
+  const mrep = master.reps[side];
+  const lines = masterLines(mrep).filter(l => fam === '*' || (l.name?.family || 'Unnamed') === fam);
+  if (!lines.length) { toast('Nothing to copy there.'); return; }
+  // a cut-down repertoire with just those lines and the notes along them
+  const sub = { side, pos: {} };
+  for (const l of lines) {
+    let key = R.START_KEY;
+    for (const m of l.moves) {
+      R.addMove(sub, key, m.san, m.uci);
+      if (mrep.pos[key]?.note) sub.pos[key].note = mrep.pos[key].note;
+      key = m.key;
+    }
+    if (mrep.pos[key]?.note) (sub.pos[key] ||= { moves: [], note: '' }).note = mrep.pos[key].note;
+  }
+  const models = MD.list(mrep).filter(m => lines.some(l => MD.illustrating({ models: [m] }, l.moves.map(x => x.key), 0).length));
+  readPgn(PGN.exportRep(sub));             // the usual preview; the [Repertoire] tag sends it to `side`
+  pendingCopy = { name: master.name, side, models };
+  $('imp-summary').textContent = `Copy from ${master.name}: ${fam === '*' ? 'everything' : fam} (${sideName(side)})` +
+    (models.length ? ` · ${models.length} model game${models.length === 1 ? '' : 's'}` : '') + '.';
+}
+
+$('copy-who').onchange = fillCopyWhat;
+$('copy-side').onchange = fillCopyWhat;
+$('copy-go').onclick = previewCopy;
 let pendingLink = null;    // the Lichess link a pending import was fetched from
 
 /* Lichess links the app can fetch directly (their PGN exports are open to other sites).
@@ -1191,17 +1265,24 @@ function updatePreview() {
 
 function doImport() {
   const { reps, total } = simulate();
+  const copy = pendingCopy;              // closing the sheet clears it
   undoSnapshot = clone(data.reps);
   undoSync = null;
   undoKind = 'import';
   data.reps = reps;
   if (pendingLink && !pendingBackup) rememberLink(pendingLink, $('imp-side').value);
+  let copiedModels = 0;
+  if (copy) {
+    for (const m of copy.models) if (!MD.find(reps[copy.side], m.id)) { MD.add(reps[copy.side], m, m.note); copiedModels++; }
+  }
   rep = data.reps[data.active];
   line = []; cur = 0;
   persist();
   closeSheet();
   render();
-  toast(pendingBackup ? 'Backup restored.' : `Imported ${total.added} new move${total.added === 1 ? '' : 's'}.`, true);
+  toast(pendingBackup ? 'Backup restored.'
+    : copy ? `Copied ${total.added} new move${total.added === 1 ? '' : 's'}${copiedModels ? ` and ${copiedModels} model game${copiedModels === 1 ? '' : 's'}` : ''} from ${copy.name}.`
+    : `Imported ${total.added} new move${total.added === 1 ? '' : 's'}.`, true);
 }
 
 function undoImport() {
@@ -1305,7 +1386,7 @@ function renderSync() {
   }
   if (sy.role === 'follow') {
     const n = S.changeCount(localChanges());
-    const who = $('sync-who').selectedOptions[0]?.textContent || sy.follow;
+    const who = ($('sync-who').selectedOptions[0]?.textContent || sy.follow).split(' — ')[0];
     setStatus('sync-fol-status', !sy.follow ? 'Choose whose master to follow.'
       : `${sy.applied ? `On ${who}'s master from ${when(sy.applied)}.` : `Not updated from ${who}'s master yet.`}` +
         (n ? ` ${n} change${n === 1 ? '' : 's'} made on this device.` : ''));
@@ -1318,7 +1399,7 @@ async function loadFollowList() {
   const sel = $('sync-who');
   try {
     const list = await S.fetchIndex();
-    sel.innerHTML = '<option value="">Choose…</option>' + list.map(e => `<option value="${esc(e.slug)}">${esc(e.name)}</option>`).join('');
+    sel.innerHTML = '<option value="">Choose…</option>' + list.map(e => `<option value="${esc(e.slug)}">${esc(e.name)} — published ${esc(when(e.published))}</option>`).join('');
     if (data.sync.follow && !list.some(e => e.slug === data.sync.follow)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(data.sync.follow)}">${esc(data.sync.follow)}</option>`);
     sel.value = data.sync.follow || '';
     if (!list.length) setStatus('sync-fol-status', 'Nobody has published a master yet.');

@@ -1,6 +1,6 @@
 /* Service worker: network-first for the app (updates show on reload), falling back to the
    cache offline. The repertoire itself lives in localStorage, not here. */
-const CACHE = 'chess-repertoire-v22';
+const CACHE = 'chess-repertoire-v23';
 const PIECES = ['K', 'Q', 'R', 'B', 'N', 'P'].flatMap(p => [`./pieces/w${p}.svg`, `./pieces/b${p}.svg`]);
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './board.js', './repertoire.js', './pgn.js', './train.js', './games.js', './theory.js', './openings.js', './sync.js', './engine.js', './models.js', './check.js', './data/openings.json',

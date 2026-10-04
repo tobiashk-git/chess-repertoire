@@ -83,6 +83,16 @@
         </div>
       </section>
 
+      <section id="copy-sec">
+        <h3>Copy from someone's repertoire</h3>
+        <p class="hint">Start from a family member's published master — everything, or one opening. It is added to your repertoire (nothing of yours is removed), with their notes and model games, and you don't follow them afterwards.</p>
+        <label class="field">Person <select id="copy-who"><option value="">Choose…</option></select></label>
+        <label class="field">Their <select id="copy-side"><option value="w">White repertoire</option><option value="b">Black repertoire</option></select></label>
+        <label class="field">What <select id="copy-what" disabled><option value="">—</option></select></label>
+        <div class="row"><button id="copy-go" class="primary" disabled>Preview copy</button></div>
+        <p id="copy-status" class="hint"></p>
+      </section>
+
       <section id="import-review" hidden>
         <h3>Import</h3>
         <p id="imp-summary"></p>

@@ -23,6 +23,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | — | Engine tab: Stockfish 18 lite (WASM, offline after first start) — eval bar + 3 best lines, tap to play; builder only | 2026-10-04 |
 | — | Model games: ★ flag master games or pasted PGN games as a line's inspiration (+ why-note); ★ Models study tab, stars on line-table columns, listed at the end of a training line; published with the master | 2026-10-04 |
 | — | Engine line check: your moves graded Best / Solid / Playable / Risky / Mistake by loss vs Stockfish's best (depth 16, level positions get extra room), tagged ★ Surprise weapon (<5% of master games) or Sideline (5–15%); underlines in the line table; results kept per device | 2026-10-04 |
+| B | Family: Copy from someone's master (all or one opening, with notes + model games, preview + undo); follow list shows publish dates; FAMILY.md setup guide (GitHub account → collaborator → classic `public_repo` token → publish; fine-grained tokens can't write to a repo you only collaborate on) | 2026-10-04 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now
@@ -46,7 +47,7 @@ studies on the PC → import into the app on the PC → Publish → phone trains
 - Optional once the account exists: a Lichess token on the PC could add live
   masters/Lichess-database stats to the Study panel.
 
-## Next — Phase B: family / multiple users
+## Phase B: family / multiple users — shipped 2026-10-04 (steps 1, 2, 4; step 3 not needed: no shared devices)
 
 Goal: other family members can use the app with their own repertoires, follow or copy each
 other's, with **no logins** unless self-service publishing is wanted later.
