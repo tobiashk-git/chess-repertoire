@@ -20,7 +20,7 @@ import * as C from './check.js';
 import { STARTERS, pgnOf as starterPgn } from './starters.js';
 
 const $ = id => document.getElementById(id);
-const APP_VERSION = 25;   // bump together with the service worker cache name on every release
+const APP_VERSION = 26;   // bump together with the service worker cache name on every release
 const MINE = '#15803d', THEIRS = '#2563eb';
 
 const data = R.load();

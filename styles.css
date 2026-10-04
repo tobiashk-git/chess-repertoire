@@ -348,3 +348,13 @@ body.viewing .train-only { display: none !important; }
 .lt td.c.chk-surprise::before { content: "★"; position: absolute; top: 1px; left: 3px; font-size: 9px; color: #d4a017; }
 
 .version { margin: 14px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
+
+/* ---- menu panel: controls never push the panel wider than the screen ---- */
+.sheet-wrap { overflow-x: hidden; }
+.sheet { width: 100%; }
+.field { min-width: 0; }
+.field select, .field input { min-width: 0; max-width: 65%; text-overflow: ellipsis; }
+@media (max-width: 520px) {
+  .field { flex-direction: column; align-items: stretch; gap: 4px; }
+  .field select, .field input { max-width: 100%; width: 100%; }
+}
