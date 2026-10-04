@@ -22,6 +22,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | — | Line table → Excel (CSV) export of the shown columns; PC exports download instead of opening the share dialog | 2026-10-04 |
 | — | Engine tab: Stockfish 18 lite (WASM, offline after first start) — eval bar + 3 best lines, tap to play; builder only | 2026-10-04 |
 | — | Model games: ★ flag master games or pasted PGN games as a line's inspiration (+ why-note); ★ Models study tab, stars on line-table columns, listed at the end of a training line; published with the master | 2026-10-04 |
+| — | Engine line check: your moves graded Best / Solid / Playable / Risky / Mistake by loss vs Stockfish's best (depth 16, level positions get extra room), tagged ★ Surprise weapon (<5% of master games) or Sideline (5–15%); underlines in the line table; results kept per device | 2026-10-04 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now
@@ -82,7 +83,6 @@ can publish without GitHub; the master file format carries straight over.
 
 - Whole master-games collection available offline (today: cached as positions are viewed)
 - Daily review reminder / streak
-- Engine line check: run Stockfish down a whole line and flag your moves that lose ≥0.8 against its best (one tap per line, results marked in the line table)
 - Styled Excel (.xlsx) export of the line table (colours for branch moves / your moves), if CSV isn't enough
 - Optional: training progress following you across devices (needs two-way sync)
 

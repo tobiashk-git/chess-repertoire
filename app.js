@@ -16,6 +16,7 @@ import * as O from './openings.js';
 import * as S from './sync.js';
 import * as E from './engine.js';
 import * as MD from './models.js';
+import * as C from './check.js';
 
 const $ = id => document.getElementById(id);
 const MINE = '#15803d', THEIRS = '#2563eb';
@@ -271,6 +272,10 @@ function renderLines(key) {
           if (c === active && p === cur - 1) cls.push('cur');
           if (c.unsaved && p >= c.branch) cls.push('unsaved');
           if (!c.unsaved && rep.pos[m.key]?.note) cls.push('note');
+          if (p % 2 === mineParity) {
+            const r = rep.checks?.[`${p ? c.moves[p - 1].key : R.START_KEY}|${m.san}`];
+            if (r) { cls.push('chk-' + r.verdict); if (C.isSurprise(r)) cls.push('chk-surprise'); }
+          }
         }
         h += `<td class="${cls.join(' ')}"${m ? ` data-c="${ci}" data-p="${p}"` : ''}>${m ? m.san : ''}</td>`;
       }
@@ -329,6 +334,77 @@ function loadColumn(col, p) {
 
 // Tap a cell: load that line, positioned after that move.
 $('lines-csv').onclick = exportLinesCsv;
+
+/* ---------- engine line check ---------- */
+
+let checking = null;   // { cancelled } while a check runs
+
+function checkTitle(i, san) { return `${Math.floor(i / 2) + 1}${i % 2 ? '…' : '.'}${san}`; }
+
+function renderCheck(snap, idx, results, running) {
+  const verdicts = Object.keys(C.VERDICTS);
+  $('check-list').innerHTML = idx.map(i => {
+    const r = results[i];
+    if (!r) return `<li><button data-i="${i}"><span class="mv">${esc(checkTitle(i, snap[i].san))}</span><span class="pending">${running === i ? 'checking…' : '—'}</span></button></li>`;
+    const m = r.masters;
+    const masters = !m ? 'beyond the master-games index' : m.total ? `masters: ${m.count} of ${m.total}` : 'no master games here';
+    const vs = r.verdict === 'best' ? '' : ` · best ${checkTitle(i, r.bestSan)} ${C.fmt(r.best)}`;
+    return `<li><button data-i="${i}"><span class="mv">${esc(checkTitle(i, r.san))}</span>
+      <span class="vb ${r.verdict}">${C.VERDICTS[r.verdict].label}</span>${{ surprise: '<span class="vb surprise">★ Surprise weapon</span>', sideline: '<span class="vb sideline">Sideline</span>' }[C.rarity(r)] || ''}
+      <small>after your move ${C.fmt(r.after)}${vs} · ${masters}</small></button></li>`;
+  }).join('');
+  $('check-list').querySelectorAll('button').forEach(b => b.onclick = () => {
+    if (line !== snap) { line = snap; }
+    go(+b.dataset.i);                     // the position before that move
+  });
+  const done = idx.filter(i => results[i]);
+  if (!running && running !== 0) {
+    const tally = verdicts.map(v => [v, done.filter(i => results[i].verdict === v).length]).filter(([, n]) => n)
+      .map(([v, n]) => `${n} ${C.VERDICTS[v].label.toLowerCase()}`).join(', ');
+    const surprises = done.filter(i => C.rarity(results[i]) === 'surprise').length;
+    const sidelines = done.filter(i => C.rarity(results[i]) === 'sideline').length;
+    $('check-status').textContent = `${done.length} of your moves checked at depth ${C.DEPTH}: ${tally}` +
+      (surprises ? ` · ${surprises} surprise weapon${surprises === 1 ? '' : 's'}` : '') +
+      (sidelines ? ` · ${sidelines} sideline${sidelines === 1 ? '' : 's'}` : '') + '. Tap a move to go there.';
+  }
+}
+
+async function runCheck() {
+  if (checking) return;
+  const snap = line;
+  const mine = rep.side === 'w' ? 0 : 1;
+  const idx = snap.map((_, i) => i).filter(i => i % 2 === mine);
+  if (!idx.length) { toast('Put a line on the board first (tap a column in the table).'); return; }
+  rep.checks ||= {};
+  checking = { cancelled: false };
+  const results = {};
+  $('check').hidden = false;
+  $('check').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try {
+    for (const [n, i] of idx.entries()) {
+      if (checking.cancelled) break;
+      const fen = i ? snap[i - 1].fen : DEFAULT_POSITION;
+      const k = C.checkKey(fen, snap[i].san);
+      if (rep.checks[k]?.depth >= C.DEPTH) { results[i] = rep.checks[k]; continue; }
+      $('check-status').textContent = `Checking move ${n + 1} of ${idx.length} with Stockfish (depth ${C.DEPTH})…`;
+      renderCheck(snap, idx, results, i);
+      results[i] = await C.checkMove(fen, snap[i].san, i);
+      rep.checks[k] = results[i];
+      persist();
+    }
+  } catch {
+    $('check-status').textContent = 'The engine could not run on this device.';
+  }
+  const cancelled = checking.cancelled;
+  checking = null;
+  renderCheck(snap, idx, results, null);
+  if (cancelled) $('check-status').textContent = 'Check stopped. ' + $('check-status').textContent;
+  studyKey = null;                       // let the Engine tab pick up again
+  render();
+}
+
+$('lines-check').onclick = runCheck;
+$('check-close').onclick = () => { if (checking) checking.cancelled = true; $('check').hidden = true; };
 
 $('lines').addEventListener('click', e => {
   const td = e.target.closest('td[data-c]');

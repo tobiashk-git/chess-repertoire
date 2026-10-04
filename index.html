@@ -211,6 +211,15 @@
       </div>
 
       <p id="opening-name" class="opening build-only"></p>
+      <div class="panel check build-only" id="check" hidden>
+        <div class="panel-head">
+          <h2>Engine check</h2>
+          <button id="check-close" class="icon-btn dark" aria-label="Close">✕</button>
+        </div>
+        <p id="check-status" class="hint"></p>
+        <ul id="check-list" class="check-list"></ul>
+      </div>
+
       <div class="path-row build-only">
         <div id="path" class="path"></div>
         <button id="save-line" class="primary" hidden>Save line</button>
@@ -259,7 +268,10 @@
         <div id="lines" class="lines-wrap"></div>
         <div class="lines-foot-row">
           <p id="lines-foot" class="hint"></p>
-          <button id="lines-csv" class="linkbtn">Export to Excel (CSV)</button>
+          <span class="foot-btns">
+            <button id="lines-check" class="linkbtn">Engine check this line</button>
+            <button id="lines-csv" class="linkbtn">Export to Excel (CSV)</button>
+          </span>
         </div>
       </div>
 
