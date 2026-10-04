@@ -289,6 +289,29 @@ function renderLines(key) {
   }
 }
 
+/* The line table as a CSV for Excel: the columns on screen (All, or From here), laid out like
+   the table: family row, variation row, branch row, W/B row, then one row per move number. */
+function exportLinesCsv() {
+  const cols = tableCols.filter(c => !c.unsaved);
+  if (!cols.length) { toast('No saved lines in the table to export.'); return; }
+  const cell = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+  const pair = f => cols.flatMap(c => [f(c), '']);
+  const rows = [
+    ['', ...pair(c => c.name?.family || '')],
+    ['', ...pair(c => (c.name ? `${c.name.eco} ${c.name.variation}`.trim() : ''))],
+    ['', ...pair(c => c.label)],
+    ['#', ...cols.flatMap(() => ['W', 'B'])],
+  ];
+  const plies = Math.max(...cols.map(c => c.moves.length));
+  for (let r = 0; r < Math.ceil(plies / 2); r++) {
+    rows.push([r + 1, ...cols.flatMap(c => [c.moves[2 * r]?.san || '', c.moves[2 * r + 1]?.san || ''])]);
+  }
+  const csv = '\ufeff' + rows.map(row => row.map(cell).join(',')).join('\r\n');   // BOM: Excel reads it as UTF-8
+  const here = scope === 'here' && cur > 0 ? O.nameOf(line.slice(0, cur).map(m => R.keyOf(m.fen))) : null;
+  const slug = (here ? here.family : 'all').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  deliver(csv, `lines-${sideName(rep.side).toLowerCase()}-${slug}-${today()}.csv`);
+}
+
 // Load a column's whole line onto the board, positioned after move index p.
 function loadColumn(col, p) {
   const chess = new Chess();
@@ -300,6 +323,8 @@ function loadColumn(col, p) {
 }
 
 // Tap a cell: load that line, positioned after that move.
+$('lines-csv').onclick = exportLinesCsv;
+
 $('lines').addEventListener('click', e => {
   const td = e.target.closest('td[data-c]');
   if (!td) return;
@@ -996,9 +1021,12 @@ function toast(text, withUndo = false) {
 const today = () => new Date().toISOString().slice(0, 10);
 
 async function deliver(text, filename) {
-  const file = new File([text], filename, { type: 'text/plain' });
-  // On iPhone the share sheet is the way to save a file (Save to Files, AirDrop, Mail…)
-  if (navigator.canShare?.({ files: [file] })) {
+  const type = filename.endsWith('.csv') ? 'text/csv' : filename.endsWith('.json') ? 'application/json' : 'text/plain';
+  const file = new File([text], filename, { type });
+  // On a phone the share sheet is the way to save a file (Save to Files, AirDrop, Mail…);
+  // on a PC (fine pointer) a plain download is what you want, even where sharing exists.
+  const phone = matchMedia('(pointer: coarse)').matches;
+  if (phone && navigator.canShare?.({ files: [file] })) {
     try { await navigator.share({ files: [file], title: filename }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
   }

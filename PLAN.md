@@ -19,6 +19,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | — | Training end-of-line: stays on the final position (opening name + note) until Next; Note this position button | 2026-10-03 |
 | — | Import from Lichess link (study / chapter / game, side from the chapter's orientation, remembered links with Re-import) + Paste from clipboard | 2026-10-03 |
 | — | Undo for deleted moves / lines (toast, 8 s; restores notes + training) | 2026-10-03 |
+| — | Line table → Excel (CSV) export of the shown columns; PC exports download instead of opening the share dialog | 2026-10-04 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now
@@ -79,6 +80,7 @@ can publish without GitHub; the master file format carries straight over.
 
 - Whole master-games collection available offline (today: cached as positions are viewed)
 - Daily review reminder / streak
+- Styled Excel (.xlsx) export of the line table (colours for branch moves / your moves), if CSV isn't enough
 - Optional: training progress following you across devices (needs two-way sync)
 
 ## Notes for development

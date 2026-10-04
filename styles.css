@@ -281,3 +281,8 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 .links li span { flex: 1; min-width: 0; font-size: 14px; }
 .links li small { display: block; color: var(--muted); font-size: 12px; }
 .links li .linkbtn { font-size: 13px; }
+
+/* ---- line table export ---- */
+.lines-foot-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 0 14px; }
+.lines-foot-row .hint { padding: 6px 0 0; }
+.lines-foot-row .linkbtn { font-size: 13px; white-space: nowrap; }
