@@ -20,7 +20,7 @@ import * as C from './check.js';
 import { STARTERS, pgnOf as starterPgn } from './starters.js';
 
 const $ = id => document.getElementById(id);
-const APP_VERSION = 24;   // bump together with the service worker cache name on every release
+const APP_VERSION = 25;   // bump together with the service worker cache name on every release
 const MINE = '#15803d', THEIRS = '#2563eb';
 
 const data = R.load();
@@ -1167,7 +1167,6 @@ $('starter-go').onclick = () => {
   readPgn(starterPgn(s));
   pendingStarter = s;
   $('imp-summary').textContent = `Suggested repertoire: ${s.name} (${sideName(s.side)}). It is added to your ${sideName(s.side)} repertoire; nothing of yours is removed.`;
-  $('sheet').scrollTo({ top: 0 });
 };
 
 $('copy-who').onchange = fillCopyWhat;
@@ -1193,6 +1192,7 @@ async function importFromLink(url, side = null) {
   if (!link) { toast('That is not a Lichess study, chapter or game link.'); return; }
   $('import-start').hidden = true;
   $('import-review').hidden = false;
+  $('import-review').scrollIntoView({ block: 'start' });
   $('imp-summary').textContent = 'Fetching from Lichess…';
   $('imp-options').hidden = true;
   $('imp-preview').textContent = '';
@@ -1228,6 +1228,7 @@ function readPgn(text, link = null) {
     $('imp-go').textContent = 'Restore';
     $('import-start').hidden = true;
     $('import-review').hidden = false;
+    $('import-review').scrollIntoView({ block: 'start' });
     return;
   }
   $('imp-go').textContent = 'Import';
@@ -1249,6 +1250,7 @@ function readPgn(text, link = null) {
   }
   $('import-start').hidden = true;
   $('import-review').hidden = false;
+  $('import-review').scrollIntoView({ block: 'start' });
   updatePreview();
 }
 

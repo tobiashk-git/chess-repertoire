@@ -65,6 +65,30 @@
         </div>
       </section>
 
+      <section id="import-review" hidden>
+        <h3>Import</h3>
+        <p id="imp-summary"></p>
+        <div id="imp-options">
+          <label class="field">Into
+            <select id="imp-side"><option value="w">White repertoire</option><option value="b">Black repertoire</option></select>
+          </label>
+          <label class="field">Depth
+            <select id="imp-depth">
+              <option value="0">Whole game</option>
+              <option value="16">First 8 moves</option>
+              <option value="24">First 12 moves</option>
+              <option value="30">First 15 moves</option>
+              <option value="40">First 20 moves</option>
+            </select>
+          </label>
+        </div>
+        <p id="imp-preview" class="preview"></p>
+        <div class="row">
+          <button id="imp-go" class="primary">Import</button>
+          <button id="imp-cancel" class="btn">Cancel</button>
+        </div>
+      </section>
+
       <section id="import-start">
         <h3>Import</h3>
         <p class="hint">Merge a PGN file, pasted PGN or a Lichess study / chapter / game link into a repertoire: variations, comments (as notes) and every game. Nothing already there is removed.</p>
@@ -101,29 +125,6 @@
         <p id="copy-status" class="hint"></p>
       </section>
 
-      <section id="import-review" hidden>
-        <h3>Import</h3>
-        <p id="imp-summary"></p>
-        <div id="imp-options">
-          <label class="field">Into
-            <select id="imp-side"><option value="w">White repertoire</option><option value="b">Black repertoire</option></select>
-          </label>
-          <label class="field">Depth
-            <select id="imp-depth">
-              <option value="0">Whole game</option>
-              <option value="16">First 8 moves</option>
-              <option value="24">First 12 moves</option>
-              <option value="30">First 15 moves</option>
-              <option value="40">First 20 moves</option>
-            </select>
-          </label>
-        </div>
-        <p id="imp-preview" class="preview"></p>
-        <div class="row">
-          <button id="imp-go" class="primary">Import</button>
-          <button id="imp-cancel" class="btn">Cancel</button>
-        </div>
-      </section>
 
       <section>
         <h3>Export</h3>
