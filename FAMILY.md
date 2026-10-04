@@ -1,7 +1,7 @@
 # Chess Repertoire — your opening trainer
 
-A free app for your PC that helps you build the openings you want to play, and then drills
-them until you know them by heart.
+A free app for your PC that helps you build the openings you want to play, and practise them
+until you know them by heart.
 
 - **Build your lines** on a board, or bring them in from chess.com or Lichess.
 - **Train:** the app plays your opponent's moves and you find yours. Lines you get wrong come
