@@ -29,8 +29,12 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 
 ## Now
 
-**Testing the current version** (user, from 2026-10-03) before starting Phase B.
-Collect anything fiddly or wrong here and fix it first:
+**Family rollout (from 2026-10-04):** guide sent to the family —
+https://tobiashk-git.github.io/chess-repertoire/guide.html (`guide.html`, the copy to keep updated).
+Waiting for their feedback. For each new publisher: get their GitHub username, invite them as a
+collaborator (Tobias approves), they create a classic `public_repo` token.
+
+Feedback to fix:
 
 - …
 
