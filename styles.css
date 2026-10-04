@@ -286,3 +286,16 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 .lines-foot-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 0 14px; }
 .lines-foot-row .hint { padding: 6px 0 0; }
 .lines-foot-row .linkbtn { font-size: 13px; white-space: nowrap; }
+
+/* ---- engine tab ---- */
+.ev { display: flex; align-items: center; gap: 10px; margin: 2px 0 8px; }
+.ev-score { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 18px; min-width: 64px; }
+.ev-bar { flex: 1; height: 14px; border-radius: 7px; background: #3a3a3a; overflow: hidden; border: 1px solid #b8b0a0; }
+.ev-bar span { display: block; height: 100%; background: #f4f1ea; transition: width 0.3s; }
+.ev-lines { list-style: none; margin: 0; padding: 0; }
+.ev-lines li { border-top: 1px solid var(--line); }
+.ev-lines button { width: 100%; display: flex; gap: 10px; align-items: baseline; border: 0; background: none; text-align: left; padding: 8px 0; }
+.ev-lines .s { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; min-width: 54px; font-size: 14px; }
+.ev-lines .pv { font-size: 14px; line-height: 1.4; }
+.ev-lines .pv b { color: var(--accent); }
+.ev-foot { font-size: 12px; color: var(--muted); margin: 6px 0 0; }

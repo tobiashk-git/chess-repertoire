@@ -14,6 +14,7 @@ import * as G from './games.js';
 import * as TH from './theory.js';
 import * as O from './openings.js';
 import * as S from './sync.js';
+import * as E from './engine.js';
 
 const $ = id => document.getElementById(id);
 const MINE = '#15803d', THEIRS = '#2563eb';
@@ -462,6 +463,7 @@ function closeTrainStart() {
 }
 
 function startTraining(mode) {
+  E.stop();
   const s = newSession(mode);
   if (!s.available()) { toast('Nothing to train there.'); return; }
   closeTrainStart();
@@ -474,6 +476,7 @@ function startTraining(mode) {
 }
 
 function stopTraining() {
+  studyKey = null;                       // restart whatever the Study panel was showing
   session?.stop();
   session = null;
   board.interactive = true;
@@ -572,13 +575,75 @@ function scheduleStudy(inRep) {
   for (const b of $('study-tabs').children) b.classList.toggle('on', b.dataset.tab === studyTab);
   $('study-games').hidden = studyTab !== 'games';
   $('study-theory').hidden = studyTab !== 'theory';
+  $('study-engine').hidden = studyTab !== 'engine';
+  if (studyTab !== 'engine') E.stop();
   const pos = line.slice(0, cur).map(m => m.san).join(' ');
   const key = studyTab + '|' + pos;
   if (key === studyKey) return;          // same position and tab: keep what is shown
   if (studyKey && studyKey.split('|')[1] !== pos) studyAll = false;
   studyKey = key;
   clearTimeout(studyTimer);
-  studyTimer = setTimeout(studyTab === 'games' ? loadGames : loadTheory, 180);
+  studyTimer = setTimeout({ games: loadGames, theory: loadTheory, engine: loadEngine }[studyTab] || loadGames, 180);
+}
+
+/* ---------- engine tab: Stockfish on the board position (builder only, never in training) ---------- */
+
+const ENGINE_ON = 'chessrep.engine';
+const engineOn = () => { try { return localStorage.getItem(ENGINE_ON) === 'on'; } catch { return false; } };
+
+const fmtScore = l => l.mate != null ? (l.mate > 0 ? `#${l.mate}` : `-#${-l.mate}`)
+  : `${l.cp > 0 ? '+' : l.cp < 0 ? '−' : ''}${Math.abs(l.cp / 100).toFixed(2)}`;
+
+// a principal variation (UCI) as numbered SAN from `fen`, first move highlighted
+function pvText(fen, pv, max = 10) {
+  const chess = new Chess(fen);
+  const out = [];
+  for (const u of pv.slice(0, max)) {
+    const n = chess.moveNumber(), white = chess.turn() === 'w';
+    let m;
+    try { m = chess.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }); } catch { break; }
+    const num = white ? `${n}.` : out.length === 0 ? `${n}…` : '';
+    out.push(num + m.san);
+  }
+  return out;
+}
+
+function loadEngine() {
+  const el = $('study-engine');
+  if (!engineOn()) {
+    el.innerHTML = `<p class="hint">Stockfish 18 (lite) analyses the position on the board: an evaluation and the three best lines. The first start downloads about 7 MB; after that it works offline. It never shows during training.</p>
+      <button id="engine-start" class="primary">Start engine</button>`;
+    $('engine-start').onclick = () => { try { localStorage.setItem(ENGINE_ON, 'on'); } catch {} loadEngine(); };
+    return;
+  }
+  const fen = fenAt(cur);
+  const chess = new Chess(fen);
+  if (chess.isGameOver()) {
+    el.innerHTML = `<p class="hint">${chess.isCheckmate() ? 'Checkmate.' : 'Game over — draw.'}</p>`;
+    return;
+  }
+  if (!E.started()) el.innerHTML = '<p class="hint">Starting the engine…</p>';
+  E.analyse(fen, chess.moves().length, upd => {
+    if (studyTab !== 'engine' || fenAt(cur) !== fen || session || viewer) return;
+    renderEngine(fen, upd);
+  }).catch(() => { el.innerHTML = '<p class="hint">The engine could not start on this device.</p>'; });
+}
+
+function renderEngine(fen, { depth, lines }) {
+  const best = lines[0];
+  if (!best) return;
+  const white = best.mate != null ? (best.mate > 0 ? 100 : 0) : 50 + 50 * (2 / (1 + Math.exp(-0.004 * best.cp)) - 1);
+  $('study-engine').innerHTML = `
+    <div class="ev"><span class="ev-score">${fmtScore(best)}</span><div class="ev-bar" title="White's share"><span style="width:${white.toFixed(1)}%"></span></div></div>
+    <ul class="ev-lines">${lines.filter(Boolean).map((l, i) => {
+      const moves = pvText(fen, l.pv);
+      return `<li><button data-i="${i}"><span class="s">${fmtScore(l)}</span><span class="pv"><b>${esc(moves[0] || '')}</b> ${esc(moves.slice(1).join(' '))}</span></button></li>`;
+    }).join('')}</ul>
+    <p class="ev-foot">Stockfish 18 lite · depth ${depth} · scores from White's side · tap a line to play its first move</p>`;
+  $('study-engine').querySelectorAll('.ev-lines button').forEach(b => b.onclick = () => {
+    const u = lines[+b.dataset.i].pv[0];
+    playMove({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] });
+  });
 }
 
 async function loadGames() {
@@ -666,6 +731,7 @@ for (const b of $('study-tabs').children) b.onclick = () => {
 let viewer = null;   // { g, ply, leave, noteKey }
 
 function openGame(g, ply = g.at) {
+  E.stop();
   // the first move of the game that is not in the repertoire
   const chess = new Chess();
   let leave = 0;

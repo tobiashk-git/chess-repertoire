@@ -20,6 +20,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | — | Import from Lichess link (study / chapter / game, side from the chapter's orientation, remembered links with Re-import) + Paste from clipboard | 2026-10-03 |
 | — | Undo for deleted moves / lines (toast, 8 s; restores notes + training) | 2026-10-03 |
 | — | Line table → Excel (CSV) export of the shown columns; PC exports download instead of opening the share dialog | 2026-10-04 |
+| — | Engine tab: Stockfish 18 lite (WASM, offline after first start) — eval bar + 3 best lines, tap to play; builder only | 2026-10-04 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now

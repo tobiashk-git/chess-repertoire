@@ -5,6 +5,8 @@ A phone-first PWA for building a chess opening repertoire and drilling it.
 - **Run locally:** `python devserver.py` → http://127.0.0.1:8150 (no-cache server)
 - **No build step:** plain ES modules. `vendor/chess.js` is chess.js 1.4.0 (BSD-2); `pieces/` is the
   cburnett set from lichess (CC BY-SA 3.0).
+  `vendor/stockfish/` is Stockfish 18 lite single-threaded WASM from stockfish.js 18.0.8
+  (https://github.com/nmrugg/stockfish.js, GPLv3 — licence in `vendor/stockfish/Copying.txt`; unmodified).
 - **Data:** stored in `localStorage` (`chessrep.v1`) on each device. Full backup = JSON (moves, notes,
   training progress); PGN export for other apps.
 - **Master sync (sync.js):** the publishing device (PC) writes `masters/<name>.json` + `masters/index.json`
