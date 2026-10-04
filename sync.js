@@ -31,7 +31,7 @@ export function content(reps) {
       const n = reps[side].pos[k];
       pos[k] = { moves: n.moves.map(m => ({ san: m.san, uci: m.uci })), note: n.note || '' };
     }
-    out[side] = { side, pos };
+    out[side] = { side, pos, models: reps[side].models || [] };
   }
   return out;
 }

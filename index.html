@@ -168,6 +168,7 @@
         <p id="t-prompt" class="t-prompt"></p>
         <p id="t-feedback" class="t-feedback"></p>
         <p id="t-note" class="t-note"></p>
+        <div id="t-models" class="t-models" hidden></div>
         <button id="t-hint" class="btn">Show me the move</button>
         <div class="row t-end">
           <button id="t-next" class="primary" hidden>Next line</button>
@@ -198,9 +199,13 @@
           <button id="v-last" title="End">⏭</button>
         </div>
         <div id="v-moves" class="v-moves"></div>
+        <div id="v-model-box" class="v-model" hidden>
+          <p class="v-model-head">★ Model game <button id="v-model-remove" class="linkbtn">Remove</button></p>
+          <textarea id="v-model-note" rows="2" placeholder="Why this game? e.g. shows the plan with …gxf6 and the king walk"></textarea>
+        </div>
         <div class="row">
           <button id="v-save" class="btn">Add moves to here to repertoire</button>
-          <button id="v-note" class="btn">Add to note</button>
+          <button id="v-model" class="btn">★ Mark as model game</button>
           <button id="v-copy" class="btn">Copy PGN</button>
         </div>
       </div>
@@ -230,11 +235,13 @@
         <div class="panel-head">
           <h2>Study</h2>
           <div class="mini-seg" id="study-tabs">
-            <button data-tab="games">Master games</button>
+            <button data-tab="models" id="tab-models">★ Models</button>
+            <button data-tab="games">Masters</button>
             <button data-tab="theory">Theory</button>
             <button data-tab="engine">Engine</button>
           </div>
         </div>
+        <div id="study-models" hidden></div>
         <div id="study-games"></div>
         <div id="study-theory" hidden></div>
         <div id="study-engine" hidden></div>

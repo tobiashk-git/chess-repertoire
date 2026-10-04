@@ -21,6 +21,7 @@ Working style: phased, smallest useful scope per phase, playtest on the phone be
 | — | Undo for deleted moves / lines (toast, 8 s; restores notes + training) | 2026-10-03 |
 | — | Line table → Excel (CSV) export of the shown columns; PC exports download instead of opening the share dialog | 2026-10-04 |
 | — | Engine tab: Stockfish 18 lite (WASM, offline after first start) — eval bar + 3 best lines, tap to play; builder only | 2026-10-04 |
+| — | Model games: ★ flag master games or pasted PGN games as a line's inspiration (+ why-note); ★ Models study tab, stars on line-table columns, listed at the end of a training line; published with the master | 2026-10-04 |
 | A | Master sync: PC publishes `masters/<name>.json`, phone follows, one-tap update keeping training progress, "Send my changes"; full JSON backup incl. training | 2026-10-03 |
 
 ## Now

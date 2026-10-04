@@ -299,3 +299,27 @@ body:not(.viewing) .view-only, body.viewing .build-only { display: none !importa
 .ev-lines .pv { font-size: 14px; line-height: 1.4; }
 .ev-lines .pv b { color: var(--accent); }
 .ev-foot { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+
+/* ---- model games ---- */
+.study .panel-head { flex-wrap: wrap; }
+.v-model { background: #fef9e7; border-left: 3px solid #d4a017; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+.v-model-head { margin: 0 0 6px; font-weight: 700; color: #92610a; display: flex; justify-content: space-between; }
+.v-model textarea { background: #fffdf5; }
+.mlist { list-style: none; margin: 0; padding: 0; }
+.mlist li { border-top: 1px solid var(--line); }
+.mlist button.open { width: 100%; border: 0; background: none; text-align: left; padding: 9px 0; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+.mlist .who { font-weight: 700; }
+.mlist .who::before { content: "★ "; color: #d4a017; }
+.mlist .res { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--muted); align-self: center; grid-row: span 3; }
+.mlist .meta { font-size: 13px; color: var(--muted); }
+.mlist .why { font-size: 13px; font-style: italic; color: var(--ink); }
+.m-add { margin-top: 10px; }
+.m-add summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 14px; }
+.m-add textarea { margin-top: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.lt .lname .star { color: #d4a017; font-weight: 700; margin-left: 4px; }
+.lt .lname.act .star { color: #ffd65c; }
+.t-models { margin: 0 0 10px; }
+.t-models p { margin: 0 0 4px; font-size: 13px; font-weight: 700; color: #92610a; }
+.t-models button { display: block; width: 100%; text-align: left; border: 1px solid #ecdca8; background: #fffaf0; border-radius: 8px; padding: 6px 10px; margin-bottom: 4px; font-size: 14px; }
+.t-models button small { display: block; color: var(--muted); font-style: italic; }
+body.viewing .train-only { display: none !important; }

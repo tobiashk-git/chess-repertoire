@@ -15,6 +15,7 @@ import * as TH from './theory.js';
 import * as O from './openings.js';
 import * as S from './sync.js';
 import * as E from './engine.js';
+import * as MD from './models.js';
 
 const $ = id => document.getElementById(id);
 const MINE = '#15803d', THEIRS = '#2563eb';
@@ -202,7 +203,10 @@ function renderLines(key) {
     if (i > 0) { branch = 0; while (all[i - 1][branch]?.san === moves[branch].san) branch++; }
     return { moves, branch, label: i === 0 ? 'Main line' : plyLabel(branch, moves[branch].san) };
   });
-  for (const c of cols) c.name = O.nameOf(c.moves.map(m => m.key));
+  for (const c of cols) {
+    c.name = O.nameOf(c.moves.map(m => m.key));
+    c.models = MD.illustrating(rep, c.moves.map(m => m.key), Math.max(c.branch, 0)).length;
+  }
   renderJump(cols);
 
   // the line on the board as its own dashed column while it has unsaved moves
@@ -247,7 +251,7 @@ function renderLines(key) {
   for (const c of shown) {
     const v = c.name ? `${c.name.eco} ${c.name.variation || ''}`.trim() : '';
     h += `<th class="lname${c === active ? ' act' : ''}${c.unsaved ? ' unsaved' : ''}" colspan="2">` +
-      `<span class="vn">${esc(v)}</span><span class="bl">${esc(c.label)}</span></th>`;
+      `<span class="vn">${esc(v)}</span><span class="bl">${esc(c.label)}${c.models ? `<span class="star" title="${c.models} model game${c.models === 1 ? '' : 's'}">★${c.models > 1 ? c.models : ''}</span>` : ''}</span></th>`;
   }
   h += '</tr><tr>';
   for (const _ of shown) h += '<th class="wb">W</th><th class="wb pb">B</th>';
@@ -519,6 +523,14 @@ function showTrain(st) {
   // at the end of a line you can write (or edit) the note for the final position
   trainEndKey = st.phase === 'lineDone' ? st.keys[st.keys.length - 1] : null;
   $('t-note-btn').hidden = !trainEndKey;
+  const tm = trainEndKey ? MD.illustrating(rep, st.keys, 0) : [];
+  $('t-models').hidden = !tm.length;
+  $('t-models').innerHTML = tm.length ? `<p>★ Model game${tm.length === 1 ? '' : 's'} for this line</p>` +
+    tm.map((m, i) => `<button data-i="${i}">${esc(MD.label(m))} · ${esc(m.result.replace('1/2-1/2', '½-½'))}${m.note ? `<small>${esc(m.note)}</small>` : ''}</button>`).join('') : '';
+  $('t-models').querySelectorAll('button').forEach(b => b.onclick = () => {
+    const m = tm[+b.dataset.i];
+    openGame(m, MD.reaching(rep, trainEndKey).find(x => x.m === m)?.at ?? 0);
+  });
   $('t-note-btn').textContent = st.note ? 'Edit note' : 'Note this position';
   if (!trainEndKey) $('t-note-edit').hidden = true;
   $('t-next').textContent = st.mode === 'game' ? 'Next game' : 'Next line';
@@ -576,6 +588,9 @@ function scheduleStudy(inRep) {
   $('study-games').hidden = studyTab !== 'games';
   $('study-theory').hidden = studyTab !== 'theory';
   $('study-engine').hidden = studyTab !== 'engine';
+  $('study-models').hidden = studyTab !== 'models';
+  const nModels = MD.reaching(rep, R.keyOf(fenAt(cur))).length;
+  $('tab-models').textContent = nModels ? `★ Models ${nModels}` : '★ Models';
   if (studyTab !== 'engine') E.stop();
   const pos = line.slice(0, cur).map(m => m.san).join(' ');
   const key = studyTab + '|' + pos;
@@ -583,7 +598,45 @@ function scheduleStudy(inRep) {
   if (studyKey && studyKey.split('|')[1] !== pos) studyAll = false;
   studyKey = key;
   clearTimeout(studyTimer);
-  studyTimer = setTimeout({ games: loadGames, theory: loadTheory, engine: loadEngine }[studyTab] || loadGames, 180);
+  studyTimer = setTimeout({ models: loadModels, games: loadGames, theory: loadTheory, engine: loadEngine }[studyTab] || loadGames, 180);
+}
+
+/* ---------- model games tab ---------- */
+
+function loadModels() {
+  const el = $('study-models');
+  const key = R.keyOf(fenAt(cur));
+  const here = MD.reaching(rep, key);
+  const total = MD.list(rep).length;
+  const intro = here.length
+    ? `<p class="g-sum">${here.length === 1 ? 'Your model game that passes' : `${here.length} of your model games pass`} through this position</p>`
+    : `<p class="hint">${total ? 'None of your model games reach this position.' : 'No model games yet. Open a master game (Masters tab) and tap ★ Mark as model game, or add any game from a PGN below.'}</p>`;
+  el.innerHTML = intro + (here.length ? `<ul class="mlist">${here.map(({ m }, i) => `
+      <li><button class="open" data-i="${i}">
+        <span class="who">${esc(m.white)} – ${esc(m.black)}</span>
+        <span class="res">${esc(m.result.replace('1/2-1/2', '½-½'))}</span>
+        <span class="meta">${esc([m.event, m.year || ''].filter(Boolean).join(' · '))}${m.eco ? ' · ' + esc(m.eco) : ''}</span>
+        ${m.note ? `<span class="why">${esc(m.note)}</span>` : ''}
+      </button></li>`).join('')}</ul>` : '') + `
+    <details class="m-add"><summary>Add a game from PGN (chess.com, a book…)</summary>
+      <textarea id="m-pgn" rows="4" placeholder="Paste the game's PGN here"></textarea>
+      <div class="row"><button id="m-clip" class="btn">Paste from clipboard</button><button id="m-add" class="primary">Add model game</button></div>
+    </details>`;
+  el.querySelectorAll('.mlist button.open').forEach(b => b.onclick = () => { const x = here[+b.dataset.i]; openGame(x.m, x.at); });
+  $('m-clip').onclick = async () => {
+    try { $('m-pgn').value = await navigator.clipboard.readText(); } catch { toast('Could not read the clipboard — paste into the box.'); }
+  };
+  $('m-add').onclick = () => {
+    const g = MD.fromPgn($('m-pgn').value);
+    if (!g) { toast('No game found in that PGN.'); return; }
+    if (MD.find(rep, g.id)) { toast('That game is already one of your model games.'); return; }
+    const m = MD.add(rep, g);
+    persist();
+    const at = MD.reaching(rep, key).find(x => x.m === m)?.at;
+    toast(at != null ? `★ ${MD.label(m)} added — add a line on why.` : `★ ${MD.label(m)} added. It doesn't reach this position; it shows wherever it meets your lines.`);
+    openGame(m, at ?? 0);
+    $('v-model-note').focus();
+  };
 }
 
 /* ---------- engine tab: Stockfish on the board position (builder only, never in training) ---------- */
@@ -728,7 +781,7 @@ for (const b of $('study-tabs').children) b.onclick = () => {
 
 /* ---------- game viewer ---------- */
 
-let viewer = null;   // { g, ply, leave, noteKey }
+let viewer = null;   // { g, ply, leave }
 
 function openGame(g, ply = g.at) {
   E.stop();
@@ -736,8 +789,7 @@ function openGame(g, ply = g.at) {
   const chess = new Chess();
   let leave = 0;
   while (leave < g.moves.length && R.hasMove(rep, R.keyOf(chess.fen()), g.moves[leave])) chess.move(g.moves[leave++]);
-  const noteKey = viewer ? viewer.noteKey : studyInRep ? R.keyOf(fenAt(cur)) : null;
-  viewer = { g, ply, leave, noteKey };
+  viewer = { g, ply, leave };
   document.body.classList.add('viewing');
   board.interactive = false;
   window.scrollTo({ top: 0 });
@@ -746,9 +798,10 @@ function openGame(g, ply = g.at) {
 
 function closeGame() {
   viewer = null;
-  board.interactive = true;
   document.body.classList.remove('viewing');
   studyKey = null;                       // refresh chips: the repertoire may have grown
+  if (session) { session.show({ phase: 'lineDone' }); return; }   // back to the end of the training line
+  board.interactive = true;
   render();
 }
 
@@ -785,7 +838,10 @@ function showViewer() {
     if (top < list.scrollTop || top > list.scrollTop + list.clientHeight - 30) list.scrollTop = top - 60;
   }
   $('v-save').disabled = ply === 0;
-  $('v-note').hidden = !viewer.noteKey;
+  const model = MD.find(rep, MD.idOf(g));
+  $('v-model').hidden = !!model;
+  $('v-model-box').hidden = !model;
+  if (model && document.activeElement !== $('v-model-note')) $('v-model-note').value = model.note || '';
 }
 
 $('v-close').onclick = closeGame;
@@ -805,15 +861,24 @@ $('v-save').onclick = () => {
   toast(added ? `Added ${added} new move${added === 1 ? '' : 's'} to your repertoire.` : 'Those moves are already in your repertoire.');
   openGame(viewer.g, viewer.ply);       // recompute where it now leaves the repertoire
 };
-$('v-note').onclick = () => {
-  const g = viewer.g;
-  const ref = `Model game: ${g.white} – ${g.black}, ${[g.event, g.year].filter(Boolean).join(' ')} (${g.result})`;
-  const n = R.node(rep, viewer.noteKey);
-  if (n?.note?.includes(ref)) { toast('Already in the note.'); return; }
-  R.setNote(rep, viewer.noteKey, n?.note ? n.note + '\n' + ref : ref);
+$('v-model').onclick = () => {
+  MD.add(rep, viewer.g);
   persist();
-  toast('Added to the note for this position.');
+  showViewer();
+  $('v-model-note').focus();
+  toast(`★ ${MD.label(viewer.g)} is now a model game — add a line on why.`);
 };
+$('v-model-remove').onclick = () => {
+  if (!confirm('Remove this game from your model games?')) return;
+  MD.remove(rep, MD.idOf(viewer.g));
+  persist();
+  showViewer();
+  toast('Removed from model games.');
+};
+$('v-model-note').addEventListener('input', e => {
+  const m = MD.find(rep, MD.idOf(viewer.g));
+  if (m) { m.note = e.target.value; persist(); }
+});
 $('v-copy').onclick = async () => {
   try { await navigator.clipboard.writeText(G.pgnOf(viewer.g)); toast('Game copied as PGN.'); }
   catch { toast('Copy failed.'); }
