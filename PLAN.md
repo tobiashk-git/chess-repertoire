@@ -81,6 +81,7 @@ can publish without GitHub; the master file format carries straight over.
 
 - Whole master-games collection available offline (today: cached as positions are viewed)
 - Daily review reminder / streak
+- Engine line check: run Stockfish down a whole line and flag your moves that lose ≥0.8 against its best (one tap per line, results marked in the line table)
 - Styled Excel (.xlsx) export of the line table (colours for branch moves / your moves), if CSV isn't enough
 - Optional: training progress following you across devices (needs two-way sync)
 
